@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>PIMS Operations Dashboard</h1>
+          <p class="app-subtitle">
+            Track inventory health, transactions, alerts, and compliance reporting in one place.
+          </p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link active" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel grid-two" aria-label="Quick actions">
+        <div>
+          <h2>Today&apos;s Quick Actions</h2>
+          <p class="muted">
+            Keep daily workflows moving with rapid access to receiving, dispensing, and adjustments.
+          </p>
+        </div>
+        <div class="action-grid">
+          <button class="btn" type="button">Receive Stock</button>
+          <button class="btn" type="button">Dispense Medication</button>
+          <button class="btn" type="button">Adjust Inventory</button>
+          <button class="btn ghost" type="button">Run End-of-Day Summary</button>
+        </div>
+      </section>
+
+      <section class="panel grid-three" aria-label="System status">
+        <article class="stat-card">
+          <p class="stat-label">Low Stock Alerts</p>
+          <h3>14 items</h3>
+          <p class="stat-trend danger">5 critical • 9 warning</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Expiring Soon</p>
+          <h3>26 batches</h3>
+          <p class="stat-trend warning">Next 30 days</p>
+        </article>
+        <article class="stat-card">
+          <p class="stat-label">Dispensed Today</p>
+          <h3>382 units</h3>
+          <p class="stat-trend">Across 47 transactions</p>
+        </article>
+      </section>
+
+      <section class="panel grid-two" aria-label="System map">
+        <div>
+          <h2>System Function Map</h2>
+          <p class="muted">
+            Navigate the core workflows across user access, inventory, dispensing, alerts, and reporting.
+          </p>
+          <div class="pill-group" role="list">
+            <span class="pill" role="listitem">Manage User Access</span>
+            <span class="pill" role="listitem">Medicine Masterlist</span>
+            <span class="pill" role="listitem">Inventory Movements</span>
+            <span class="pill" role="listitem">Dispensing Activities</span>
+            <span class="pill" role="listitem">Expiry Alerts</span>
+            <span class="pill" role="listitem">Shelf Locations</span>
+            <span class="pill" role="listitem">Reports</span>
+            <span class="pill" role="listitem">System Admin</span>
+          </div>
+        </div>
+        <div class="module-list">
+          <article>
+            <h3>Access &amp; Security</h3>
+            <ul>
+              <li>User login, role permissions, activity tracking, and secure logout.</li>
+              <li>Session timeout, password hashing, and access logging.</li>
+              <li>Profile updates and password recovery workflows.</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Inventory &amp; Alerts</h3>
+            <ul>
+              <li>Batch tracking, reorder thresholds, and shelf location assignments.</li>
+              <li>Expiry monitoring with prioritized alerts.</li>
+              <li>Stock receipts, transfers, adjustments, and physical counts.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Report center">
+        <div class="section-header">
+          <div>
+            <h2>Report Center</h2>
+            <p class="muted">Generate compliance-ready documentation and analytics.</p>
+          </div>
+          <button class="btn ghost" type="button">Export CSV</button>
+        </div>
+        <div class="report-grid">
+          <article class="report-card">
+            <h3>Stock Status</h3>
+            <p>Current inventory levels by category, location, and batch.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+          <article class="report-card">
+            <h3>Expiry Timeline</h3>
+            <p>Weekly and monthly projections for expiring medicines.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+          <article class="report-card">
+            <h3>Audit Trail</h3>
+            <p>Complete transaction history with user, time, and reason codes.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+          <article class="report-card">
+            <h3>Alert Summary</h3>
+            <p>All alert notifications with resolution status and owner.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel grid-two" aria-label="Utilities and backup">
+        <div>
+          <h2>Utilities &amp; Backup</h2>
+          <p class="muted">
+            Ensure regulatory compliance with automated backups, data import/export, and log management.
+          </p>
+        </div>
+        <div class="utility-grid">
+          <div class="utility-card">
+            <h3>Backup Status</h3>
+            <p>Last backup: Today at 02:00 AM (cloud + local).</p>
+            <button class="btn" type="button">Run Manual Backup</button>
+          </div>
+          <div class="utility-card">
+            <h3>Restore Options</h3>
+            <p>Restore from last 30 days with point-in-time recovery.</p>
+            <button class="btn ghost" type="button">Open Restore Center</button>
+          </div>
+          <div class="utility-card">
+            <h3>Data Import/Export</h3>
+            <p>CSV upload for medicine master lists and exports.</p>
+            <button class="btn" type="button">Start Import</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Security: Access logging, input validation, encrypted credentials, and redundant backups enabled.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

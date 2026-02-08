@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Medicine Masterlist</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Medicine Masterlist</h1>
+          <p class="app-subtitle">Maintain comprehensive medicine data, batches, and reorder rules.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link active" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel" aria-label="Medicine master list">
+        <div class="section-header">
+          <div>
+            <h2>Medicine Master List</h2>
+            <p class="muted">Manage long-form medicine data with search, filters, and pagination.</p>
+          </div>
+          <div class="chip-row">
+            <span class="pill">CSV Import</span>
+            <span class="pill">Data Validation</span>
+            <span class="pill">Auto-backup Enabled</span>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <label class="field">
+              <span>Search medicines</span>
+              <input id="searchInput" type="search" placeholder="Name, ID, category, location..." />
+            </label>
+            <label class="field">
+              <span>Category</span>
+              <select id="categoryFilter">
+                <option value="all">All</option>
+                <option value="Antibiotic">Antibiotic</option>
+                <option value="Analgesic">Analgesic</option>
+                <option value="Chronic Care">Chronic Care</option>
+                <option value="Vaccine">Vaccine</option>
+                <option value="Supplement">Supplement</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Stock status</span>
+              <select id="statusFilter">
+                <option value="all">All</option>
+                <option value="okay">Stable</option>
+                <option value="warning">Low Stock</option>
+                <option value="danger">Critical</option>
+              </select>
+            </label>
+          </div>
+          <div class="toolbar-group">
+            <label class="field">
+              <span>Sort by</span>
+              <select id="sortFilter">
+                <option value="name">Name</option>
+                <option value="expiry">Expiry</option>
+                <option value="quantity">Quantity</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Rows per page</span>
+              <select id="pageSize">
+                <option value="6">6</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+              </select>
+            </label>
+            <button class="btn ghost" type="button" id="exportButton">Export Selected</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Medicine</th>
+                <th>Category</th>
+                <th>Expiry</th>
+                <th>Location</th>
+                <th>On-hand</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="medicineRows"></tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <p id="resultCount" class="muted">Showing 0 items</p>
+          <div class="pagination">
+            <button class="btn ghost" type="button" id="prevPage">Previous</button>
+            <span id="pageIndicator">Page 1 of 1</span>
+            <button class="btn ghost" type="button" id="nextPage">Next</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Security: Access logging, input validation, encrypted credentials, and redundant backups enabled.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

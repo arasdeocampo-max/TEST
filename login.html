@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Login</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Secure Login</h1>
+          <p class="app-subtitle">Access role-based dashboards for pharmacists and staff.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Need an account?</p>
+        <h2>New to PIMS</h2>
+        <div class="header-actions">
+          <a class="btn" href="signup.html">Sign Up</a>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link active" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel auth-panel" aria-label="Login form">
+        <h2>Sign In</h2>
+        <p class="muted">Use your secure credentials to access PIMS.</p>
+        <form class="form-grid">
+          <label class="field">
+            <span>Email or Username</span>
+            <input type="email" placeholder="pharmacist@clinic.com" required />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" placeholder="••••••••" required />
+          </label>
+          <label class="field">
+            <span>Role</span>
+            <select>
+              <option>Pharmacist (Admin)</option>
+              <option>Staff</option>
+            </select>
+          </label>
+          <button class="btn" type="submit">Login</button>
+        </form>
+        <div class="helper-links">
+          <a href="signup.html">Create account</a>
+          <a href="index.html">Back to dashboard</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Session timeout and password hashing enabled for secure access.</p>
+    </footer>
+  </body>
+</html>

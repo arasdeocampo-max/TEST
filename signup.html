@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Sign Up</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Create an Account</h1>
+          <p class="app-subtitle">Invite staff, assign roles, and start tracking inventory.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Already registered?</p>
+        <h2>Return to Login</h2>
+        <div class="header-actions">
+          <a class="btn" href="login.html">Login</a>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel auth-panel" aria-label="Sign up form">
+        <h2>Register</h2>
+        <p class="muted">Set up access credentials and role assignments.</p>
+        <form class="form-grid">
+          <label class="field">
+            <span>Full Name</span>
+            <input type="text" placeholder="Dr. A. Santos" required />
+          </label>
+          <label class="field">
+            <span>Email Address</span>
+            <input type="email" placeholder="pharmacist@clinic.com" required />
+          </label>
+          <label class="field">
+            <span>Role</span>
+            <select>
+              <option>Pharmacist (Admin)</option>
+              <option>Staff</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" placeholder="Create password" required />
+          </label>
+          <button class="btn" type="submit">Create Account</button>
+        </form>
+        <div class="helper-links">
+          <a href="login.html">Already have an account?</a>
+          <a href="index.html">Back to dashboard</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Accounts are protected with hashed passwords and role-based permissions.</p>
+    </footer>
+  </body>
+</html>

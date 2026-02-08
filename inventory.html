@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Inventory Movements</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Inventory Movements</h1>
+          <p class="app-subtitle">Record stock receipts, adjustments, transfers, and physical counts.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link active" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel grid-two" aria-label="Inventory workflows">
+        <div>
+          <h2>Movement Controls</h2>
+          <p class="muted">Track inbound, outbound, and adjustment activity for every batch.</p>
+        </div>
+        <div class="action-grid">
+          <button class="btn" type="button">Record Stock Receipt</button>
+          <button class="btn" type="button">Process Adjustment</button>
+          <button class="btn" type="button">Transfer Stock</button>
+          <button class="btn ghost" type="button">Start Physical Count</button>
+        </div>
+      </section>
+
+      <section class="panel grid-two" aria-label="Inventory tracking">
+        <div>
+          <h2>Inventory Oversight</h2>
+          <p class="muted">Maintain accurate stock levels and document reason codes.</p>
+          <ul>
+            <li>Update stock levels by batch and location.</li>
+            <li>Capture damage, loss, and correction codes.</li>
+            <li>Review daily movement summaries.</li>
+          </ul>
+        </div>
+        <div class="module-list">
+          <article>
+            <h3>Recent Movements</h3>
+            <ul>
+              <li>Cold storage transfer: 24 units moved.</li>
+              <li>Adjustment: 12 units marked damaged.</li>
+              <li>Receipt: 450 units of Metformin added.</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Compliance Notes</h3>
+            <ul>
+              <li>All movements logged to audit trail.</li>
+              <li>Physical count required weekly.</li>
+              <li>Auto-alerts for negative inventory.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Inventory movements are recorded in the transaction table with full audit logs.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

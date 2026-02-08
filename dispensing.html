@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Dispensing</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Dispensing Activities</h1>
+          <p class="app-subtitle">Record dispensing transactions and auto-deduct inventory.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link active" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel grid-two" aria-label="Dispensing actions">
+        <div>
+          <h2>Dispense Workflow</h2>
+          <p class="muted">Validate stock availability before releasing medicine.</p>
+        </div>
+        <div class="action-grid">
+          <button class="btn" type="button">New Dispense</button>
+          <button class="btn" type="button">Scan Prescription</button>
+          <button class="btn" type="button">Record Return</button>
+          <button class="btn ghost" type="button">Daily Summary</button>
+        </div>
+      </section>
+
+      <section class="panel grid-two" aria-label="Dispensing overview">
+        <div>
+          <h2>Daily Highlights</h2>
+          <p class="muted">Monitor dispensing totals and audit logs.</p>
+          <ul>
+            <li>382 units dispensed today across 47 transactions.</li>
+            <li>Average dispense time: 4.2 minutes.</li>
+            <li>Auto-deduct inventory enabled for all categories.</li>
+          </ul>
+        </div>
+        <div class="module-list">
+          <article>
+            <h3>Audit Trail</h3>
+            <ul>
+              <li>10:18 AM • Dr. Lee • Metformin 30 units.</li>
+              <li>11:45 AM • Nurse A. • Ibuprofen 20 units.</li>
+              <li>01:20 PM • Dr. Cruz • Amoxicillin 15 units.</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Daily Summary</h3>
+            <ul>
+              <li>Top category: Chronic Care (42%).</li>
+              <li>Returns logged: 3.</li>
+              <li>Next report export at 6:00 PM.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Dispensing records feed daily summaries and compliance reports automatically.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
