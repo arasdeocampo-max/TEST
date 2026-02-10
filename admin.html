@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS System Administration</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>System Administration</h1>
+          <p class="app-subtitle">Backups, database maintenance, settings, and system logs.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link active" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel grid-two" aria-label="Admin utilities">
+        <div>
+          <h2>System Utilities</h2>
+          <p class="muted">Keep PIMS secure, backed up, and compliant.</p>
+        </div>
+        <div class="action-grid">
+          <button class="btn" type="button">Run Backup</button>
+          <button class="btn" type="button">Restore Database</button>
+          <button class="btn" type="button">Update Settings</button>
+          <button class="btn ghost" type="button">View System Logs</button>
+        </div>
+      </section>
+
+      <section class="panel grid-two" aria-label="Admin overview">
+        <div>
+          <h2>Administration Checklist</h2>
+          <p class="muted">Daily checks for stability and regulatory compliance.</p>
+          <ul>
+            <li>Verify automated backups and redundancy.</li>
+            <li>Review system error logs for anomalies.</li>
+            <li>Manage user permissions and activity logs.</li>
+          </ul>
+        </div>
+        <div class="module-list">
+          <article>
+            <h3>Backup Health</h3>
+            <ul>
+              <li>Last backup: Today 02:00 AM (cloud + local).</li>
+              <li>Retention: 90 days.</li>
+              <li>Last restore test: 2 days ago.</li>
+            </ul>
+          </article>
+          <article>
+            <h3>System Settings</h3>
+            <ul>
+              <li>Alert thresholds configured by category.</li>
+              <li>Session timeout: 20 minutes.</li>
+              <li>Audit logging: Enabled.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>System administration activities are logged for security auditing.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

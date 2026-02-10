@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Shelf Locations</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Shelf Locations</h1>
+          <p class="app-subtitle">Assign, search, and visualize storage layouts by shelf and zone.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link active" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel grid-two" aria-label="Location actions">
+        <div>
+          <h2>Location Management</h2>
+          <p class="muted">Keep shelf assignments accurate and easy to find.</p>
+        </div>
+        <div class="action-grid">
+          <button class="btn" type="button">Assign Shelf</button>
+          <button class="btn" type="button">Search Locations</button>
+          <button class="btn" type="button">Update Layout</button>
+          <button class="btn ghost" type="button">Open Visual Map</button>
+        </div>
+      </section>
+
+      <section class="panel grid-two" aria-label="Location insights">
+        <div>
+          <h2>Storage Overview</h2>
+          <p class="muted">Ensure fast picking with clear shelf organization.</p>
+          <ul>
+            <li>Cold storage monitored with temperature logging.</li>
+            <li>Fast-moving categories grouped in Zone B.</li>
+            <li>Quarterly layout review scheduled.</li>
+          </ul>
+        </div>
+        <div class="module-list">
+          <article>
+            <h3>Popular Zones</h3>
+            <ul>
+              <li>Zone A: Antibiotics and injectables.</li>
+              <li>Zone B: Analgesics and OTC supplies.</li>
+              <li>Zone C: Chronic care medications.</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Upcoming Tasks</h3>
+            <ul>
+              <li>Update aisle markers for Zone D.</li>
+              <li>Reassign vaccines to new cold rack.</li>
+              <li>Audit high-alert medicine storage.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Location updates sync with the medicine masterlist and inventory records.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

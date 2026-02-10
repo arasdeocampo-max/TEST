@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Reports</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Reports &amp; Analytics</h1>
+          <p class="app-subtitle">Generate stock status, expiry, usage, and audit reports.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link active" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel" aria-label="Report center">
+        <div class="section-header">
+          <div>
+            <h2>Report Center</h2>
+            <p class="muted">Download compliance-ready documents and performance analytics.</p>
+          </div>
+          <button class="btn ghost" type="button">Export CSV</button>
+        </div>
+        <div class="report-grid">
+          <article class="report-card">
+            <h3>Stock Status Report</h3>
+            <p>Current inventory levels by category, location, and batch.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+          <article class="report-card">
+            <h3>Expiry Timeline Report</h3>
+            <p>Weekly and monthly projections for expiring medicines.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+          <article class="report-card">
+            <h3>Usage Analytics</h3>
+            <p>Consumption trends and dispensing patterns.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+          <article class="report-card">
+            <h3>Audit Trail Report</h3>
+            <p>Full transaction history with user, time, and reason codes.</p>
+            <button class="btn link" type="button">Generate Report</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel grid-two" aria-label="Report highlights">
+        <div>
+          <h2>Highlights</h2>
+          <p class="muted">Dashboard metrics and KPIs for leadership reviews.</p>
+          <ul>
+            <li>Critical alert resolution rate: 96%.</li>
+            <li>Average stock turnover: 18 days.</li>
+            <li>Automated backups completed nightly.</li>
+          </ul>
+        </div>
+        <div class="module-list">
+          <article>
+            <h3>Scheduled Reports</h3>
+            <ul>
+              <li>Daily dispensing summary at 6:00 PM.</li>
+              <li>Weekly expiry forecast Monday 8:00 AM.</li>
+              <li>Monthly audit pack on the 1st.</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Export Options</h3>
+            <ul>
+              <li>CSV, PDF, and print-ready templates.</li>
+              <li>Role-based access controls for exports.</li>
+              <li>Audit trail for all downloads.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Reports are archived automatically for regulatory compliance.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

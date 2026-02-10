@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIMS Expiry Alerts</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">💊</div>
+        <div>
+          <p class="app-eyebrow">Pharmacy Inventory Management System</p>
+          <h1>Expiry &amp; Alert Monitoring</h1>
+          <p class="app-subtitle">Prioritize expiring batches and low-stock alerts daily.</p>
+        </div>
+      </div>
+      <div class="user-card">
+        <p class="user-role">Signed in as</p>
+        <h2>Pharmacist (Admin)</h2>
+        <div class="header-actions">
+          <a class="btn ghost" href="signup.html">Sign Up</a>
+          <button class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Primary">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="masterlist.html">Medicine Masterlist</a>
+      <a class="nav-link" href="inventory.html">Inventory</a>
+      <a class="nav-link" href="dispensing.html">Dispensing</a>
+      <a class="nav-link active" href="alerts.html">Expiry Alerts</a>
+      <a class="nav-link" href="locations.html">Shelf Locations</a>
+      <a class="nav-link" href="reports.html">Reports</a>
+      <a class="nav-link" href="admin.html">System Admin</a>
+      <a class="nav-link" href="login.html">Login</a>
+    </nav>
+
+    <main>
+      <section class="panel grid-two" aria-label="Alert priorities">
+        <div>
+          <h2>Today&apos;s Alert Summary</h2>
+          <p class="muted">Automatic scans check expiry dates and low-stock thresholds.</p>
+        </div>
+        <div class="action-grid">
+          <button class="btn" type="button">Review Critical Alerts</button>
+          <button class="btn" type="button">Resolve Warnings</button>
+          <button class="btn" type="button">Generate Expiry Report</button>
+          <button class="btn ghost" type="button">Archive Resolved Alerts</button>
+        </div>
+      </section>
+
+      <section class="panel grid-two" aria-label="Alert insights">
+        <div>
+          <h2>Alert Insights</h2>
+          <p class="muted">Stay ahead of expiries with weekly and monthly projections.</p>
+          <ul>
+            <li>26 batches expiring in the next 30 days.</li>
+            <li>5 critical low-stock alerts pending review.</li>
+            <li>Expiry alerts automatically routed by category.</li>
+          </ul>
+        </div>
+        <div class="module-list">
+          <article>
+            <h3>Critical Expiries</h3>
+            <ul>
+              <li>Hepatitis B Vaccine • 2024-07-05.</li>
+              <li>Azithromycin 250mg • 2024-08-22.</li>
+              <li>Influenza Vaccine • 2024-09-12.</li>
+            </ul>
+          </article>
+          <article>
+            <h3>Resolution Workflow</h3>
+            <ul>
+              <li>Assign owner and update resolution status.</li>
+              <li>Record disposal or transfer details.</li>
+              <li>Log alert history for auditing.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Alerts are tracked in history logs with resolution status for compliance.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
