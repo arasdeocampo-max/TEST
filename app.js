@@ -147,13 +147,132 @@
     }).join('') || '<tr><td colspan="5">No batches.</td></tr>';
   }
 
-  function renderAlerts() {
+  function computeAlerts() {
     const s = state();
-    const meds = s.medicines.filter(m => !m.archived);
-    $('#lowStockList').innerHTML = meds.filter(m => totalForMedicine(m.id) < (m.reorderLevelBoxes * m.packSize)).map(m => `<li>${m.genericName} (${totalForMedicine(m.id)} ${m.baseUnit} / reorder ${m.reorderLevelBoxes * m.packSize})</li>`).join('') || '<li>None</li>';
+    const medicines = s.medicines.filter(m => !m.archived);
     const map = medicineMap();
-    $('#nearExpiryList').innerHTML = s.batches.filter(b => daysUntil(b.expiryDate) >= 0 && daysUntil(b.expiryDate) <= s.settings.warningDays && b.qtyBaseUnits > 0).map(b => `<li>${map[b.medicineId]?.genericName} - ${b.batchNo} (${daysUntil(b.expiryDate)} days)</li>`).join('') || '<li>None</li>';
-    $('#expiredList').innerHTML = s.batches.filter(b => daysUntil(b.expiryDate) < 0 && b.qtyBaseUnits > 0).map(b => `<li>${map[b.medicineId]?.genericName} - ${b.batchNo}</li>`).join('') || '<li>None</li>';
+
+    const lowStock = medicines
+      .filter(m => totalForMedicine(m.id) < (m.reorderLevelBoxes * m.packSize))
+      .map(m => {
+        const remainingBase = totalForMedicine(m.id);
+        const reorderBase = m.reorderLevelBoxes * m.packSize;
+        const affectedBatches = s.batches
+          .filter(b => b.medicineId === m.id && b.qtyBaseUnits > 0)
+          .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+        return {
+          medicineId: m.id,
+          medicineName: `${m.code} - ${m.genericName}`,
+          form: m.dosageForm,
+          baseUnit: m.baseUnit,
+          remainingBase,
+          reorderBase,
+          pctRemaining: reorderBase ? (remainingBase / reorderBase) * 100 : 0,
+          affectedBatches
+        };
+      })
+      .sort((a, b) => a.pctRemaining - b.pctRemaining);
+
+    const nearMap = new Map();
+    const expMap = new Map();
+
+    s.batches.forEach(b => {
+      if (b.qtyBaseUnits <= 0) return;
+      const med = map[b.medicineId];
+      if (!med || med.archived) return;
+      const daysLeft = daysUntil(b.expiryDate);
+      const rowBase = {
+        medicineId: med.id,
+        medicineName: `${med.code} - ${med.genericName}`,
+        form: med.dosageForm,
+        baseUnit: med.baseUnit,
+        remainingBase: totalForMedicine(med.id),
+        reorderBase: med.reorderLevelBoxes * med.packSize,
+        pctRemaining: (totalForMedicine(med.id) / (med.reorderLevelBoxes * med.packSize || 1)) * 100
+      };
+
+      if (daysLeft >= 0 && daysLeft <= s.settings.warningDays) {
+        if (!nearMap.has(med.id)) nearMap.set(med.id, { ...rowBase, minDaysLeft: daysLeft, affectedBatches: [] });
+        const cur = nearMap.get(med.id);
+        cur.minDaysLeft = Math.min(cur.minDaysLeft, daysLeft);
+        cur.affectedBatches.push(b);
+      }
+
+      if (daysLeft < 0) {
+        if (!expMap.has(med.id)) expMap.set(med.id, { ...rowBase, maxExpiredDays: daysLeft, affectedBatches: [] });
+        const cur = expMap.get(med.id);
+        cur.maxExpiredDays = Math.max(cur.maxExpiredDays, daysLeft);
+        cur.affectedBatches.push(b);
+      }
+    });
+
+    const nearExpiry = [...nearMap.values()]
+      .map(x => ({ ...x, affectedBatches: x.affectedBatches.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate)) }))
+      .sort((a, b) => a.minDaysLeft - b.minDaysLeft);
+
+    const expired = [...expMap.values()]
+      .map(x => ({ ...x, affectedBatches: x.affectedBatches.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate)) }))
+      .sort((a, b) => b.maxExpiredDays - a.maxExpiredDays);
+
+    return { lowStock, nearExpiry, expired };
+  }
+
+  let activeAlertsTab = 'lowStock';
+
+  function renderAlerts() {
+    const computed = computeAlerts();
+    $('#alertMetricLow').textContent = computed.lowStock.length;
+    $('#alertMetricNear').textContent = computed.nearExpiry.length;
+    $('#alertMetricExpired').textContent = computed.expired.length;
+
+    const search = ($('#alertsSearch')?.value || '').toLowerCase();
+    const formFilter = $('#alertsFormFilter')?.value || 'all';
+    const criticalOnly = $('#alertsCriticalOnly')?.checked;
+
+    let rows = computed[activeAlertsTab] || [];
+    rows = rows.filter(r => {
+      if (formFilter !== 'all' && r.form !== formFilter) return false;
+      if (search && !r.medicineName.toLowerCase().includes(search)) return false;
+      if (criticalOnly) {
+        const isCriticalNear = typeof r.minDaysLeft === 'number' && r.minDaysLeft <= 30;
+        const isCriticalStock = r.pctRemaining <= 50;
+        if (!isCriticalNear && !isCriticalStock) return false;
+      }
+      return true;
+    });
+
+    const tbody = $('#alertsTable tbody');
+    tbody.innerHTML = rows.map(r => {
+      const approxBoxes = r.reorderBase ? (r.remainingBase / (r.reorderBase / (state().medicines.find(m => m.id === r.medicineId)?.reorderLevelBoxes || 1))) : 0;
+      const status = activeAlertsTab === 'lowStock'
+        ? '<span class="badge warn">Low</span>'
+        : activeAlertsTab === 'nearExpiry'
+          ? '<span class="badge warn">Near</span>'
+          : '<span class="badge danger">Expired</span>';
+      return `<tr>
+        <td>${r.medicineName}</td>
+        <td>${r.form}</td>
+        <td>${r.remainingBase} ${r.baseUnit}<br><small>~${approxBoxes.toFixed(1)} boxes</small></td>
+        <td>${r.reorderBase} ${r.baseUnit}</td>
+        <td>${r.affectedBatches.length}</td>
+        <td class="status-cell">${status}</td>
+        <td><button class="btn" data-alert-med="${r.medicineId}" data-alert-tab="${activeAlertsTab}">View batches</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7">No alerts found for current filters.</td></tr>';
+  }
+
+  function renderAlertBatches(medicineId, tab) {
+    const computed = computeAlerts();
+    const item = (computed[tab] || []).find(x => x.medicineId === medicineId);
+    if (!item) return;
+    $('#alertsBatchModalTitle').textContent = `Affected Batches - ${item.medicineName}`;
+    const rows = [...item.affectedBatches].sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+    $('#alertsBatchTable tbody').innerHTML = rows.map(b => {
+      const d = daysUntil(b.expiryDate);
+      const badge = d < 0 ? '<span class="badge danger">Expired</span>' : d <= state().settings.warningDays ? '<span class="badge warn">Near</span>' : '<span class="badge ok">OK</span>';
+      return `<tr><td>${b.batchNo}</td><td>${b.expiryDate}</td><td>${d}</td><td>${b.qtyBaseUnits}</td><td>${badge}</td></tr>`;
+    }).join('') || '<tr><td colspan="5">No affected batches.</td></tr>';
+    $('#alertsBatchModal').showModal();
   }
 
   function renderReports() {
@@ -301,6 +420,32 @@
     $(s).addEventListener('change', renderMedicines);
   });
   $('#batchMedicineFilter').addEventListener('change', renderBatches);
+
+
+  $('#alertsTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.segment');
+    if (!tab) return;
+    activeAlertsTab = tab.dataset.tab;
+    $$('#alertsTabs .segment').forEach(btn => {
+      const active = btn.dataset.tab === activeAlertsTab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
+    });
+    renderAlerts();
+  });
+
+  ['#alertsSearch', '#alertsFormFilter', '#alertsCriticalOnly'].forEach(sel => {
+    $(sel).addEventListener('input', renderAlerts);
+    $(sel).addEventListener('change', renderAlerts);
+  });
+
+  $('#alertsTable tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-alert-med]');
+    if (!btn) return;
+    renderAlertBatches(btn.dataset.alertMed, btn.dataset.alertTab);
+  });
+
+  $('#closeAlertsBatchModal').addEventListener('click', () => $('#alertsBatchModal').close());
 
   $('#dosageChips').addEventListener('click', (e) => {
     const chip = e.target.closest('.chip');

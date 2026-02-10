@@ -188,10 +188,53 @@
 
       <section id="page-alerts" class="page">
         <h3>Alerts</h3>
-        <div class="grid split-2">
-          <div class="card"><h4>Low Stock</h4><ul id="lowStockList" class="list"></ul></div>
-          <div class="card"><h4>Near Expiry</h4><ul id="nearExpiryList" class="list"></ul></div>
-          <div class="card full"><h4>Expired</h4><ul id="expiredList" class="list"></ul></div>
+        <div class="grid cards alerts-summary">
+          <article class="card"><h4>Low Stock Medicines</h4><p id="alertMetricLow">0</p></article>
+          <article class="card"><h4>Near Expiry Medicines</h4><p id="alertMetricNear">0</p></article>
+          <article class="card"><h4>Expired Medicines</h4><p id="alertMetricExpired">0</p></article>
+        </div>
+
+        <div class="card alerts-panel">
+          <div class="filters alerts-filters">
+            <input id="alertsSearch" placeholder="Search medicine name or code" />
+            <select id="alertsFormFilter">
+              <option value="all">All dosage forms</option>
+              <option value="Tablet">Tablet</option>
+              <option value="Capsule">Capsule</option>
+              <option value="Syrup">Syrup</option>
+              <option value="Suspension">Suspension</option>
+              <option value="Gel">Gel</option>
+              <option value="Cream">Cream</option>
+              <option value="Ointment">Ointment</option>
+              <option value="Vial">Vial</option>
+              <option value="Ampoule">Ampoule</option>
+              <option value="Drops">Drops</option>
+            </select>
+            <label class="inline-check"><input type="checkbox" id="alertsCriticalOnly" /> Show only critical</label>
+          </div>
+
+          <div class="segmented" id="alertsTabs" role="tablist" aria-label="Alert type tabs">
+            <button type="button" class="segment active" data-tab="lowStock" role="tab" aria-selected="true">Low Stock</button>
+            <button type="button" class="segment" data-tab="nearExpiry" role="tab" aria-selected="false">Near Expiry</button>
+            <button type="button" class="segment" data-tab="expired" role="tab" aria-selected="false">Expired</button>
+          </div>
+
+          <div class="table-wrap alerts-table-wrap">
+            <table id="alertsTable">
+              <thead>
+                <tr>
+                  <th>Medicine</th>
+                  <th>Form</th>
+                  <th>Remaining</th>
+                  <th>Threshold</th>
+                  <th>Batch Count</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -304,6 +347,22 @@
         <button value="default" class="btn primary">Save</button>
       </div>
     </form>
+  </dialog>
+
+
+  <dialog id="alertsBatchModal" aria-labelledby="alertsBatchModalTitle">
+    <div class="modal-head">
+      <h3 id="alertsBatchModalTitle">Affected Batches</h3>
+    </div>
+    <div class="table-wrap">
+      <table id="alertsBatchTable">
+        <thead><tr><th>Batch No</th><th>Expiry Date</th><th>Days Left</th><th>Qty (base)</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="closeAlertsBatchModal">Close</button>
+    </div>
   </dialog>
 
   <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
