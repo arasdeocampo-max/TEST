@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PIMS Demo (No Backend)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="loginView" class="login-view">
+    <div class="login-card" role="region" aria-labelledby="loginTitle">
+      <h1 id="loginTitle">Pharmacy Inventory Management System</h1>
+      <p class="sub">Demo (No Backend)</p>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" required />
+        </div>
+        <p id="loginError" class="error" aria-live="polite"></p>
+        <button type="submit" class="btn primary w-full">Login</button>
+      </form>
+      <div class="demo-accounts">
+        <strong>Demo Accounts</strong>
+        <p>admin / admin123</p>
+        <p>staff / staff123</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="appView" class="app hidden">
+    <aside class="sidebar">
+      <h2>PIMS</h2>
+      <nav id="sidebarNav">
+        <button data-page="dashboard" class="nav-link active">Dashboard</button>
+        <button data-page="medicines" class="nav-link">Medicines</button>
+        <button data-page="batches" class="nav-link">Batches / FEFO</button>
+        <button data-page="transactions" class="nav-link">Transactions</button>
+        <button data-page="alerts" class="nav-link">Alerts</button>
+        <button data-page="reports" class="nav-link">Reports</button>
+        <button data-page="audit" class="nav-link">Audit Trail</button>
+        <button data-page="users" class="nav-link admin-only">Users</button>
+        <button data-page="settings" class="nav-link admin-only">Settings</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="welcomeText"></p>
+        </div>
+        <button id="logoutBtn" class="btn danger">Logout</button>
+      </header>
+
+      <section id="page-dashboard" class="page active">
+        <div class="grid cards">
+          <article class="card"><h3>Total Items</h3><p id="metricTotalItems">0</p></article>
+          <article class="card"><h3>Low Stock</h3><p id="metricLowStock">0</p></article>
+          <article class="card"><h3>Near Expiry</h3><p id="metricNearExpiry">0</p></article>
+          <article class="card"><h3>Expired</h3><p id="metricExpired">0</p></article>
+        </div>
+        <div class="card">
+          <h3>Recent Transactions</h3>
+          <div class="table-wrap"><table id="recentTxTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="page-medicines" class="page">
+        <div class="section-head">
+          <h3>Medicine Masterlist</h3>
+          <button id="addMedicineBtn" class="btn primary">Add Medicine</button>
+        </div>
+        <div class="filters">
+          <input id="medicineSearch" placeholder="Search code, generic, brand, packaging" />
+          <select id="medicineCategoryFilter"></select>
+          <select id="medicineRxFilter"><option value="all">All Type</option><option value="rx">Rx</option><option value="otc">OTC</option></select>
+          <select id="medicineArchiveFilter"><option value="active">Active</option><option value="all">All</option><option value="archived">Archived</option></select>
+        </div>
+        <div id="dosageChips" class="chips" aria-label="Dosage form filters">
+          <button type="button" class="chip active" data-form="all">All Forms</button>
+          <button type="button" class="chip" data-form="Tablet">Tablet</button>
+          <button type="button" class="chip" data-form="Syrup">Syrup</button>
+          <button type="button" class="chip" data-form="Gel">Gel</button>
+          <button type="button" class="chip" data-form="Vial">Vial</button>
+        </div>
+        <div class="table-wrap"><table id="medicineTable"><thead><tr><th>Code</th><th>Generic</th><th>Brand</th><th>Form</th><th>Strength</th><th>Base Unit</th><th>Units</th><th>Rx</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section id="page-batches" class="page">
+        <h3>Batch & Expiry Tracking (FEFO)</h3>
+        <div class="filters">
+          <select id="batchMedicineFilter"></select>
+        </div>
+        <div class="table-wrap"><table id="batchTable"><thead><tr><th>Medicine</th><th>Batch</th><th>Expiry</th><th>Qty (base)</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section id="page-transactions" class="page">
+        <h3>Transactions</h3>
+        <div class="transactions-grid">
+          <form id="stockInForm" class="card tx-card" novalidate>
+            <div class="tx-card-header">
+              <h4>Stock-In</h4>
+              <p class="hint">Receive incoming stock and convert boxes into base units automatically.</p>
+            </div>
+            <div class="tx-card-body">
+              <label for="stockInMedicine">Medicine</label>
+              <select id="stockInMedicine" name="medicineId" required></select>
+
+              <label for="stockInBatchNo">Batch No</label>
+              <input id="stockInBatchNo" name="batchNo" required />
+
+              <label for="stockInExpiry">Expiry Date</label>
+              <input id="stockInExpiry" name="expiryDate" type="date" required />
+
+              <label for="stockInQty">Quantity</label>
+              <input id="stockInQty" name="qty" type="number" min="1" required />
+
+              <label for="stockInUnit">Unit</label>
+              <select id="stockInUnit" name="unit"><option value="base">Base Units</option><option value="box">Boxes</option></select>
+
+              <p class="error" data-error></p>
+            </div>
+            <div class="tx-card-footer">
+              <button class="btn primary w-full">Record Stock-In</button>
+            </div>
+          </form>
+
+          <form id="dispenseForm" class="card tx-card" novalidate>
+            <div class="tx-card-header">
+              <h4>Dispense / Stock-Out</h4>
+              <p class="hint">Uses FEFO and blocks expired stock from being dispensed.</p>
+            </div>
+            <div class="tx-card-body">
+              <label for="dispenseMedicine">Medicine</label>
+              <select id="dispenseMedicine" name="medicineId" required></select>
+
+              <p id="dispenseSuggestion" class="hint hint-compact">Suggested FEFO batch: -</p>
+              <p class="hint hint-compact">For Rx medicines, tick Prescription Verified before submitting.</p>
+
+              <label for="dispenseQty">Quantity</label>
+              <input id="dispenseQty" name="qty" type="number" min="1" required />
+
+              <label for="dispenseUnit">Unit</label>
+              <select id="dispenseUnit" name="unit"><option value="base">Base Units</option><option value="box">Boxes</option></select>
+
+              <label class="inline-check"><input type="checkbox" name="rxVerified" /> Prescription Verified</label>
+
+              <p class="error" data-error></p>
+            </div>
+            <div class="tx-card-footer">
+              <button class="btn primary w-full">Record Dispense</button>
+            </div>
+          </form>
+
+          <form id="adjustForm" class="card tx-card" novalidate>
+            <div class="tx-card-header">
+              <h4>Adjustments</h4>
+              <p class="hint">Add or subtract stock for corrections, damage, and disposals.</p>
+            </div>
+            <div class="tx-card-body">
+              <label for="adjustMedicine">Medicine</label>
+              <select id="adjustMedicine" name="medicineId" required></select>
+
+              <label for="adjustReason">Reason</label>
+              <select id="adjustReason" name="reason"><option value="expired disposal">expired disposal</option><option value="damaged">damaged</option><option value="missing">missing</option><option value="correction">correction</option></select>
+
+              <label for="adjustDirection">Direction</label>
+              <select id="adjustDirection" name="direction"><option value="subtract">Subtract</option><option value="add">Add</option></select>
+
+              <label for="adjustQty">Quantity (base units)</label>
+              <input id="adjustQty" name="qty" type="number" min="1" required />
+
+              <p class="error" data-error></p>
+            </div>
+            <div class="tx-card-footer">
+              <button class="btn primary w-full">Apply Adjustment</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="page-alerts" class="page">
+        <h3>Alerts</h3>
+        <div class="grid split-2">
+          <div class="card"><h4>Low Stock</h4><ul id="lowStockList" class="list"></ul></div>
+          <div class="card"><h4>Near Expiry</h4><ul id="nearExpiryList" class="list"></ul></div>
+          <div class="card full"><h4>Expired</h4><ul id="expiredList" class="list"></ul></div>
+        </div>
+      </section>
+
+      <section id="page-reports" class="page">
+        <h3>Reports</h3>
+        <div class="card">
+          <div class="section-head"><h4>Stock Status Report</h4><button id="exportStockStatus" class="btn">Export CSV</button></div>
+          <div class="table-wrap"><table id="stockStatusTable"><thead><tr><th>Code</th><th>Medicine</th><th>Total Base Units</th><th>Reorder Point</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="grid split-2">
+          <div class="card">
+            <h4>Expiry Timeline</h4>
+            <div id="expiryTimeline"></div>
+          </div>
+          <div class="card">
+            <div class="section-head"><h4>Stock Movement</h4><button id="exportMovement" class="btn">Export CSV</button></div>
+            <div class="filters compact">
+              <input type="date" id="movementStart" />
+              <input type="date" id="movementEnd" />
+              <select id="movementType"><option value="all">All</option><option value="stock-in">Stock-In</option><option value="dispense">Dispense</option><option value="adjustment">Adjustment</option></select>
+              <button id="applyMovementFilter" class="btn">Apply</button>
+            </div>
+            <div class="table-wrap"><table id="movementTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Batch</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-audit" class="page">
+        <h3>Audit Trail</h3>
+        <div class="table-wrap"><table id="auditTable"><thead><tr><th>Timestamp</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section id="page-users" class="page admin-only-content">
+        <h3>User Management (Demo)</h3>
+        <div class="table-wrap"><table id="userTable"><thead><tr><th>Username</th><th>Role</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section id="page-settings" class="page admin-only-content">
+        <h3>System Settings</h3>
+        <form id="settingsForm" class="card" novalidate>
+          <label>Near expiry warning days
+            <input type="number" name="warningDays" min="1" required />
+          </label>
+          <label><input type="checkbox" name="requireRxVerification" /> Require prescription verification for Rx items</label>
+          <label>Categories (comma separated)
+            <textarea name="categories" rows="3"></textarea>
+          </label>
+          <p class="error" data-error></p>
+          <button class="btn primary">Save Settings</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="medicineModal" aria-labelledby="medicineModalTitle">
+    <form method="dialog" id="medicineForm" novalidate>
+      <h3 id="medicineModalTitle">Medicine</h3>
+      <input type="hidden" name="id" />
+      <div class="grid split-2">
+        <label>Code<input name="code" required /></label>
+        <label>Generic Name<input name="genericName" required /></label>
+        <label>Brand Name<input name="brandName" required /></label>
+        <label>Category<input name="category" required /></label>
+        <label>Dosage Form<select name="dosageForm"></select></label>
+        <label>Route<select name="route"></select></label>
+        <label>Shelf Location<input name="shelfLocation" required /></label>
+        <label>Base Unit
+          <select name="baseUnit">
+            <option value="tablet">tablet</option>
+            <option value="capsule">capsule</option>
+            <option value="mL">mL</option>
+            <option value="g">g</option>
+            <option value="piece">piece</option>
+          </select>
+        </label>
+        <label>Pack Size<input name="packSize" type="number" min="1" required /></label>
+        <label>Reorder Level Boxes<input name="reorderLevelBoxes" type="number" min="0" required /></label>
+      </div>
+
+      <div id="dosageSolid" class="grid split-2 dosage-block">
+        <label>Strength Value<input name="strengthValue" type="number" step="any" /></label>
+        <label>Strength Unit
+          <select name="strengthUnit">
+            <option value="mg">mg</option><option value="g">g</option><option value="mcg">mcg</option>
+            <option value="mg/mL">mg/mL</option><option value="IU/mL">IU/mL</option>
+            <option value="%">%</option><option value="mg/g">mg/g</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="dosageLiquid" class="grid split-2 dosage-block hidden">
+        <label>Volume Value<input name="volumeValue" type="number" step="any" /></label>
+        <label>Volume Unit<select name="volumeUnit"><option value="">-</option><option value="mL">mL</option><option value="L">L</option></select></label>
+        <label>Concentration Text<input name="concentrationText" placeholder="e.g. 125mg/5mL" /></label>
+      </div>
+
+      <div id="dosageTopical" class="dosage-block hidden card soft">
+        <p class="hint">Topicals should use baseUnit=g and strength unit %, mg/g, or g.</p>
+      </div>
+
+      <div id="dosageInjectable" class="dosage-block hidden card soft">
+        <p class="hint">Injectables must use route=Injection, baseUnit=mL, volume in mL, and strength unit mg/mL or IU/mL.</p>
+      </div>
+
+      <label>Packaging Text<input name="packagingText" placeholder="e.g. Box of 100 tablets" /></label>
+      <label><input type="checkbox" name="rxRequired" /> Rx Required</label>
+      <p class="error" data-error></p>
+      <div class="modal-actions">
+        <button value="cancel" class="btn">Cancel</button>
+        <button value="default" class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
