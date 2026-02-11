@@ -292,9 +292,12 @@
           <div id="stockStatusPagination" class="pagination"></div>
         </div>
         <div class="grid split-2">
-          <div class="card">
-            <h4>Expiry Timeline</h4>
-            <div id="expiryTimeline"></div>
+          <div class="card expiry-timeline-card">
+            <div class="expiry-timeline-head">
+              <h4>Expiry Timeline</h4>
+              <p>Batches by days-to-expiry</p>
+            </div>
+            <div id="expiryTimeline" class="expiry-timeline" aria-live="polite"></div>
           </div>
           <div class="card report-card">
             <div class="section-head"><h4>Stock Movement</h4><button id="exportMovement" class="btn">Export CSV</button></div>

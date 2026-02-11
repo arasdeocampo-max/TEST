@@ -612,14 +612,56 @@
     $('#stockStatusTable tbody').innerHTML = pageRows.map(r => `<tr><td>${r.code}</td><td>${r.name}</td><td>${r.total}</td><td>${r.reorder}</td><td>${r.statusText}</td></tr>`).join('') || '<tr><td colspan="5">No matching results</td></tr>';
     $('#stockStatusPagination').innerHTML = `<button class="page-btn" data-stock-nav="prev" ${reportState.stockPage <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${reportState.stockPage} of ${totalPages}</span><button class="page-btn" data-stock-nav="next" ${reportState.stockPage >= totalPages ? 'disabled' : ''}>Next</button>`;
 
+    renderExpiryTimeline();
+    applyMovementFilter();
+  }
+
+  function renderExpiryTimeline() {
+    const expiryRows = [
+      { key: 'expired', label: 'Expired', level: 'Critical' },
+      { key: '0-30', label: '0–30 days', level: 'Critical' },
+      { key: '31-60', label: '31–60 days', level: 'Warning' },
+      { key: '61-90', label: '61–90 days', level: 'Warning' },
+      { key: '90+', label: '90+ days', level: 'Normal' }
+    ];
+
     const buckets = { expired: 0, '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
     state().batches.forEach(b => {
       if (b.qtyBaseUnits <= 0) return;
       const d = daysUntil(b.expiryDate);
-      if (d < 0) buckets.expired += 1; else if (d <= 30) buckets['0-30'] += 1; else if (d <= 60) buckets['31-60'] += 1; else if (d <= 90) buckets['61-90'] += 1; else buckets['90+'] += 1;
+      if (d < 0) buckets.expired += 1;
+      else if (d <= 30) buckets['0-30'] += 1;
+      else if (d <= 60) buckets['31-60'] += 1;
+      else if (d <= 90) buckets['61-90'] += 1;
+      else buckets['90+'] += 1;
     });
-    $('#expiryTimeline').innerHTML = Object.entries(buckets).map(([k, v]) => `<p><strong>${k}</strong>: ${v} batches</p>`).join('');
-    applyMovementFilter();
+
+    const counts = expiryRows.map(r => buckets[r.key]);
+    const maxCount = Math.max(1, ...counts);
+    const totalBatches = counts.reduce((acc, n) => acc + n, 0);
+
+    $('#expiryTimeline').innerHTML = `
+      <p class="expiry-timeline-summary">Total tracked batches: <strong>${totalBatches}</strong></p>
+      <div class="expiry-timeline-rows">
+        ${expiryRows.map(row => {
+          const count = buckets[row.key];
+          const width = Math.round((count / maxCount) * 100);
+          const badgeClass = row.level === 'Critical' ? 'danger' : row.level === 'Warning' ? 'warn' : 'ok';
+          return `
+            <div class="expiry-row">
+              <div class="expiry-row-top">
+                <p class="expiry-row-label">${row.label}</p>
+                <p class="expiry-row-count">${count} ${count === 1 ? 'batch' : 'batches'}</p>
+                <span class="badge ${badgeClass}">${row.level}</span>
+              </div>
+              <div class="expiry-progress" role="img" aria-label="${row.label}: ${count} ${count === 1 ? 'batch' : 'batches'}">
+                <span style="width: ${width}%"></span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
 
   function applyMovementFilter() {
