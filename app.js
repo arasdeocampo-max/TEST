@@ -276,6 +276,7 @@
     renderBatches();
     renderAlerts();
     renderReports();
+    renderStockInHistory();
     renderAudit();
     renderUsers();
     renderSettings();
@@ -604,6 +605,7 @@
   }
 
   const reportState = { stockPage: 1, movementPage: 1 };
+  const stockInLogState = { page: 1, filteredRows: [] };
 
   function renderReports() {
     const meds = state().medicines.filter(m => !m.archived);
@@ -680,6 +682,70 @@
         }).join('')}
       </div>
     `;
+  }
+
+  function getStockInHistoryFilteredRows() {
+    const map = medicineMap();
+    const q = ($('#stockInLogSearch')?.value || '').trim().toLowerCase();
+    const from = $('#stockInLogFrom')?.value || '';
+    const to = $('#stockInLogTo')?.value || '';
+
+    return state().transactions
+      .filter(t => ['stock-in', 'STOCK_IN'].includes(t.type))
+      .map(t => {
+        const med = map[t.medicineId] || {};
+        const dateOnly = (t.timestamp || '').slice(0, 10);
+        const qtyInput = Number.isFinite(Number(t.qtyInput)) ? Number(t.qtyInput) : Number(t.qtyBaseUnits || 0);
+        const normalizedUnit = normalizeUnitInput(t.unitInput);
+        const unitInput = normalizedUnit === 'boxes' ? 'Boxes' : 'Base Units';
+        const qtyBaseAdded = Number.isFinite(Number(t.qtyBaseUnitsAdded)) ? Number(t.qtyBaseUnitsAdded) : Number(t.qtyBaseUnits || 0);
+        const expiryDate = t.expiryDate || state().batches.find(b => b.medicineId === t.medicineId && b.batchNo === t.batchNo)?.expiryDate || '-';
+        return {
+          timestamp: t.timestamp,
+          dateLabel: fmtDate(t.timestamp),
+          medicineText: med.code ? `${med.code} - ${med.genericName}` : (med.genericName || '-'),
+          batchNo: t.batchNo || '-',
+          expiryDate,
+          qtyInput,
+          unitInput,
+          qtyBaseAdded,
+          user: t.user || '-',
+          searchText: `${med.code || ''} ${med.genericName || ''} ${t.batchNo || ''}`.toLowerCase(),
+          dateOnly
+        };
+      })
+      .filter(r => {
+        if (q && !r.searchText.includes(q)) return false;
+        if (from && r.dateOnly && r.dateOnly < from) return false;
+        if (to && r.dateOnly && r.dateOnly > to) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }
+
+  function renderStockInHistory() {
+    const pageSize = Number($('#stockInLogPageSize')?.value || 10);
+    const rows = getStockInHistoryFilteredRows();
+    stockInLogState.filteredRows = rows;
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    if (stockInLogState.page > totalPages) stockInLogState.page = totalPages;
+    const start = (stockInLogState.page - 1) * pageSize;
+    const pageRows = rows.slice(start, start + pageSize);
+
+    $('#stockInLogTable tbody').innerHTML = pageRows.map(r => `
+      <tr>
+        <td>${r.dateLabel}</td>
+        <td>${r.medicineText}</td>
+        <td>${r.batchNo}</td>
+        <td>${r.expiryDate}</td>
+        <td>${r.qtyInput} ${r.unitInput}</td>
+        <td>${r.qtyBaseAdded}</td>
+        <td>${r.user}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="7">No stock-in transactions found for current filters.</td></tr>';
+
+    $('#stockInLogPagination').innerHTML = `<button class="page-btn" data-stockin-nav="prev" ${stockInLogState.page <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${stockInLogState.page} of ${totalPages}</span><button class="page-btn" data-stockin-nav="next" ${stockInLogState.page >= totalPages ? 'disabled' : ''}>Next</button>`;
   }
 
   function applyMovementFilter() {
@@ -1142,7 +1208,9 @@
     const med = state().medicines.find(m => m.id === f.medicineId.value);
     if (!med) return showFormError(f, 'Choose a medicine.');
     const qty = Number(f.qty.value); if (qty <= 0) return showFormError(f, 'Quantity must be greater than zero.');
-    const qtyBase = f.unit.value === 'box' ? qty * med.packSize : qty;
+    const selectedUnit = normalizeUnitInput(f.unit.value);
+    const qtyBase = convertToBaseUnits(qty, selectedUnit, med.packSize);
+    if (!Number.isFinite(qtyBase) || qtyBase <= 0) return showFormError(f, 'Unable to convert quantity to base units. Check unit and pack size.');
 
     const batches = state().batches;
     const batchNo = f.batchNo.value.trim();
@@ -1152,7 +1220,7 @@
 
     set(KEYS.batches, batches);
     const tx = state().transactions;
-    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'stock-in', medicineId: med.id, batchNo, qtyBaseUnits: qtyBase, user: state().session.username });
+    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'stock-in', medicineId: med.id, batchNo, expiryDate: f.expiryDate.value, qtyInput: qty, unitInput: selectedUnit === 'boxes' ? 'Boxes' : 'Base Units', qtyBaseUnitsAdded: qtyBase, qtyBaseUnits: qtyBase, user: state().session.username });
     set(KEYS.transactions, tx);
     saveAudit('stock-in', `${med.code}, batch ${batchNo}, +${qtyBase} ${med.baseUnit}`);
     f.reset();
@@ -1303,6 +1371,37 @@
     if (btn.dataset.moveNav === 'next') reportState.movementPage += 1;
     applyMovementFilter();
   });
+  setupSearchWithClear({
+    inputEl: $('#stockInLogSearch'),
+    clearBtnEl: $('#stockInLogSearchClear'),
+    onChange: () => {
+      stockInLogState.page = 1;
+      renderStockInHistory();
+    }
+  });
+
+  ['#stockInLogFrom', '#stockInLogTo', '#stockInLogPageSize'].forEach(sel => {
+    $(sel).addEventListener('input', () => { stockInLogState.page = 1; renderStockInHistory(); });
+    $(sel).addEventListener('change', () => { stockInLogState.page = 1; renderStockInHistory(); });
+  });
+
+  $('#stockInLogPagination').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-stockin-nav]');
+    if (!btn) return;
+    if (btn.dataset.stockinNav === 'prev') stockInLogState.page = Math.max(1, stockInLogState.page - 1);
+    if (btn.dataset.stockinNav === 'next') stockInLogState.page += 1;
+    renderStockInHistory();
+  });
+
+  $('#exportStockInLog').addEventListener('click', () => {
+    const rows = [['Date/Time', 'Medicine', 'Batch No', 'Expiry Date', 'Qty (input) + Unit', 'Qty Added (base units)', 'User']];
+    getStockInHistoryFilteredRows().forEach(r => {
+      rows.push([r.dateLabel, r.medicineText, r.batchNo, r.expiryDate, `${r.qtyInput} ${r.unitInput}`, String(r.qtyBaseAdded), r.user]);
+    });
+    exportCsv('stock_in_receiving_log.csv', rows);
+    showToast('Stock-in log exported.', 'info');
+  });
+
   $('#exportStockStatus').addEventListener('click', () => {
     const rows = [['Code', 'Medicine', 'Total Base Units', 'Reorder Point', 'Status']];
     $('#stockStatusTable tbody').querySelectorAll('tr').forEach(tr => rows.push([...tr.children].map(td => td.textContent.trim())));

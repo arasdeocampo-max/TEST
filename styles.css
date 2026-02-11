@@ -758,3 +758,17 @@ dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
   background: linear-gradient(90deg, #60a5fa, #2563eb);
   transition: width 0.25s ease;
 }
+
+.stockin-log-card {
+  margin-top: var(--space-4);
+}
+
+.stockin-log-scroll {
+  max-height: 42vh;
+}
+
+#stockInLogTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}

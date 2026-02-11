@@ -70,6 +70,7 @@
           <h3>Recent Transactions</h3>
           <div class="table-wrap"><table id="recentTxTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
         </div>
+
       </section>
 
       <section id="page-medicines" class="page">
@@ -227,6 +228,24 @@
               <button class="btn primary w-full">Apply Adjustment</button>
             </div>
           </form>
+        </div>
+      
+
+        <div class="card report-card stockin-log-card">
+          <div class="section-head"><h4>Stock-In History / Receiving Log</h4><button id="exportStockInLog" class="btn">Export CSV</button></div>
+          <div class="filters report-filters sticky-subbar">
+            <div class="search-field"><input id="stockInLogSearch" placeholder="Search medicine code/name or batch" /><button type="button" id="stockInLogSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
+            <input id="stockInLogFrom" type="date" />
+            <input id="stockInLogTo" type="date" />
+            <select id="stockInLogPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
+          </div>
+          <div class="table-wrap report-scroll report-scroll-md stockin-log-scroll">
+            <table id="stockInLogTable">
+              <thead><tr><th>Date/Time</th><th>Medicine</th><th>Batch No</th><th>Expiry Date</th><th>Qty (input) + Unit</th><th>Qty Added (base units)</th><th>User</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="stockInLogPagination" class="pagination"></div>
         </div>
       </section>
 
