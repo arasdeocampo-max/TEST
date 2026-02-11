@@ -45,15 +45,21 @@
     <aside class="sidebar">
       <h2>PIMS</h2>
       <nav id="sidebarNav">
-        <button data-page="dashboard" class="nav-link active">Dashboard</button>
-        <button data-page="medicines" class="nav-link">Medicines</button>
-        <button data-page="batches" class="nav-link">Batches / FEFO</button>
-        <button data-page="transactions" class="nav-link">Transactions</button>
-        <button data-page="alerts" class="nav-link">Alerts</button>
-        <button data-page="reports" class="nav-link">Reports</button>
-        <button data-page="audit" class="nav-link">Audit Trail</button>
-        <button data-page="users" class="nav-link admin-only">Users</button>
-        <button data-page="settings" class="nav-link admin-only">Settings</button>
+        <div class="sidebar-nav-main">
+          <button data-page="dashboard" class="nav-link active">Dashboard</button>
+          <button data-page="medicines" class="nav-link">Medicines</button>
+          <button data-page="batches" class="nav-link">Batches / FEFO</button>
+          <button data-page="transactions" class="nav-link">Transactions</button>
+          <button data-page="alerts" class="nav-link">Alerts</button>
+          <button data-page="reports" class="nav-link">Reports</button>
+          <button data-page="audit" class="nav-link">Audit Trail</button>
+          <button data-page="users" class="nav-link admin-only">Users</button>
+        </div>
+
+        <div class="sidebar-utility">
+          <button data-page="settings" class="nav-link admin-only">Settings</button>
+          <button id="logoutBtn" type="button" class="btn danger w-full">Logout</button>
+        </div>
       </nav>
     </aside>
 
@@ -63,7 +69,7 @@
           <h1 id="pageTitle">Dashboard</h1>
           <p id="welcomeText"></p>
         </div>
-        <button id="logoutBtn" class="btn danger">Logout</button>
+        
       </header>
 
       <section id="page-dashboard" class="page active">
