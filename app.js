@@ -72,6 +72,130 @@
   const allBatchesFEFO = (medicineId) => state().batches.filter(b => b.medicineId === medicineId).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
   const fmtDate = (d) => new Date(d).toLocaleDateString();
 
+  const medicineCombos = {};
+
+  function medicineOptionLabel(m) {
+    const strength = m.strengthValue && m.strengthUnit ? `${m.strengthValue}${m.strengthUnit}` : '';
+    return `${m.code} — ${m.genericName}${strength ? ` ${strength}` : ''} (${m.dosageForm})`;
+  }
+
+  function createMedicineSearch(elContainerId, onSelectCallback) {
+    const root = document.getElementById(elContainerId);
+    if (!root) return null;
+    root.innerHTML = '';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'combo-input';
+    input.placeholder = 'Search medicine…';
+    input.autocomplete = 'off';
+
+    const list = document.createElement('div');
+    list.className = 'combo-list hidden';
+
+    root.append(input, list);
+
+    const stateCombo = { items: [], filtered: [], activeIndex: -1, selectedId: '' };
+
+    function closeList() {
+      list.classList.add('hidden');
+      stateCombo.activeIndex = -1;
+    }
+
+    function renderList() {
+      const q = input.value.trim().toLowerCase();
+      stateCombo.filtered = stateCombo.items
+        .filter(m => `${m.code} ${m.genericName} ${m.brandName}`.toLowerCase().includes(q))
+        .slice(0, 8);
+
+      if (!stateCombo.filtered.length) {
+        list.innerHTML = '<div class="combo-empty">No matching medicines</div>';
+        list.classList.remove('hidden');
+        return;
+      }
+
+      list.innerHTML = stateCombo.filtered.map((m, idx) => `<div class="combo-item ${idx === stateCombo.activeIndex ? 'active' : ''}" data-id="${m.id}" data-idx="${idx}">${medicineOptionLabel(m)}</div>`).join('');
+      list.classList.remove('hidden');
+    }
+
+    function selectMedicine(med) {
+      if (!med) return;
+      stateCombo.selectedId = med.id;
+      input.value = medicineOptionLabel(med);
+      closeList();
+      onSelectCallback?.(med);
+    }
+
+    input.addEventListener('focus', renderList);
+    input.addEventListener('input', () => {
+      stateCombo.activeIndex = -1;
+      renderList();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (list.classList.contains('hidden')) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          renderList();
+        }
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        stateCombo.activeIndex = Math.min(stateCombo.activeIndex + 1, stateCombo.filtered.length - 1);
+        renderList();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        stateCombo.activeIndex = Math.max(stateCombo.activeIndex - 1, 0);
+        renderList();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (stateCombo.activeIndex >= 0) selectMedicine(stateCombo.filtered[stateCombo.activeIndex]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeList();
+      }
+    });
+
+    list.addEventListener('click', (e) => {
+      const item = e.target.closest('.combo-item');
+      if (!item) return;
+      const med = stateCombo.filtered.find(m => m.id === item.dataset.id);
+      selectMedicine(med);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!root.contains(e.target)) closeList();
+    });
+
+    return {
+      setItems(items) {
+        stateCombo.items = items;
+        if (stateCombo.selectedId && !items.some(m => m.id === stateCombo.selectedId)) {
+          stateCombo.selectedId = '';
+          input.value = '';
+        }
+      },
+      setById(id) {
+        stateCombo.selectedId = id || '';
+        const med = stateCombo.items.find(m => m.id === id);
+        input.value = med ? medicineOptionLabel(med) : '';
+      },
+      getSelectedId() {
+        return stateCombo.selectedId;
+      }
+    };
+  }
+
+  function refreshMedicineCombos() {
+    const meds = state().medicines.filter(m => !m.archived);
+    Object.values(medicineCombos).forEach(entry => {
+      entry.combo?.setItems(meds);
+      const hidden = $(entry.hiddenSelector);
+      if (hidden?.value) entry.combo?.setById(hidden.value);
+    });
+  }
+
   function refreshAll() {
     renderNavOptions();
     renderDashboard();
@@ -87,13 +211,13 @@
 
   function renderNavOptions() {
     const meds = state().medicines.filter(m => !m.archived);
-    ['#stockInForm select[name="medicineId"]', '#dispenseForm select[name="medicineId"]', '#adjustForm select[name="medicineId"]', '#batchMedicineFilter'].forEach(sel => {
-      const select = $(sel);
-      if (!select) return;
-      const current = select.value;
-      select.innerHTML = '<option value="">Select Medicine</option>' + meds.map(m => `<option value="${m.id}">${m.code} - ${m.genericName} (${m.baseUnit})</option>`).join('');
-      if (meds.some(m => m.id === current)) select.value = current;
-    });
+
+    const batchFilter = $('#batchMedicineFilter');
+    if (batchFilter) {
+      const current = batchFilter.value;
+      batchFilter.innerHTML = '<option value="">Select Medicine</option>' + meds.map(m => `<option value="${m.id}">${m.code} - ${m.genericName} (${m.baseUnit})</option>`).join('');
+      if (meds.some(m => m.id === current)) batchFilter.value = current;
+    }
 
     const catFilter = $('#medicineCategoryFilter');
     if (catFilter) {
@@ -102,6 +226,8 @@
       catFilter.innerHTML = '<option value="all">All Categories</option>' + cats.map(c => `<option>${c}</option>`).join('');
       catFilter.value = cur || 'all';
     }
+
+    refreshMedicineCombos();
   }
 
   function renderDashboard() {
@@ -545,6 +671,28 @@
   });
 
   $('#sidebarNav').addEventListener('click', e => { if (e.target.matches('.nav-link')) goToPage(e.target.dataset.page); });
+
+  medicineCombos.stockIn = {
+    hiddenSelector: '#stockInMedicineId',
+    combo: createMedicineSearch('stockInMedicineCombo', (med) => {
+      $('#stockInMedicineId').value = med.id;
+    })
+  };
+
+  medicineCombos.dispense = {
+    hiddenSelector: '#dispenseMedicineId',
+    combo: createMedicineSearch('dispenseMedicineCombo', (med) => {
+      $('#dispenseMedicineId').value = med.id;
+      updateDispenseSuggestion();
+    })
+  };
+
+  medicineCombos.adjust = {
+    hiddenSelector: '#adjustMedicineId',
+    combo: createMedicineSearch('adjustMedicineCombo', (med) => {
+      $('#adjustMedicineId').value = med.id;
+    })
+  };
   ['#medicineSearch', '#medicineCategoryFilter', '#medicineRxFilter', '#medicineArchiveFilter'].forEach(s => {
     $(s).addEventListener('input', renderMedicines);
     $(s).addEventListener('change', renderMedicines);
@@ -715,18 +863,20 @@
     tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'stock-in', medicineId: med.id, batchNo, qtyBaseUnits: qtyBase, user: state().session.username });
     set(KEYS.transactions, tx);
     saveAudit('stock-in', `${med.code}, batch ${batchNo}, +${qtyBase} ${med.baseUnit}`);
-    f.reset(); refreshAll();
+    f.reset();
+    $('#stockInMedicineId').value = '';
+    medicineCombos.stockIn?.combo?.setById('');
+    refreshAll();
     showToast('Stock-in recorded.', 'success');
   });
 
   function updateDispenseSuggestion() {
-    const med = state().medicines.find(m => m.id === $('#dispenseForm [name="medicineId"]').value);
+    const med = state().medicines.find(m => m.id === $('#dispenseMedicineId').value);
     if (!med) return $('#dispenseSuggestion').textContent = 'Suggested FEFO batch: -';
     const options = validBatchesForDispense(med.id);
     $('#dispenseSuggestion').textContent = options.length ? `Suggested FEFO batch: ${options[0].batchNo} (expires ${options[0].expiryDate})` : 'Suggested FEFO batch: none available';
   }
 
-  $('#dispenseForm [name="medicineId"]').addEventListener('change', updateDispenseSuggestion);
 
   $('#dispenseForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -752,7 +902,10 @@
     tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'dispense', medicineId: med.id, batchNo: chosenRef.batchNo, qtyBaseUnits: qtyBase, user: state().session.username });
     set(KEYS.transactions, tx);
     saveAudit('dispense', `${med.code}, batch ${chosenRef.batchNo}, -${qtyBase} ${med.baseUnit}`);
-    f.reset(); updateDispenseSuggestion(); refreshAll();
+    f.reset();
+    $('#dispenseMedicineId').value = '';
+    medicineCombos.dispense?.combo?.setById('');
+    updateDispenseSuggestion(); refreshAll();
     showToast('Dispense recorded.', 'success');
   });
 
@@ -775,7 +928,10 @@
     tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'adjustment', medicineId: med.id, batchNo: ref.batchNo, qtyBaseUnits: sign * qty, reason: f.reason.value, user: state().session.username });
     set(KEYS.transactions, tx);
     saveAudit('adjustment', `${med.code}, ${f.reason.value}, ${sign > 0 ? '+' : '-'}${qty}`);
-    f.reset(); refreshAll();
+    f.reset();
+    $('#adjustMedicineId').value = '';
+    medicineCombos.adjust?.combo?.setById('');
+    refreshAll();
     showToast('Adjustment saved.', 'success');
   });
 

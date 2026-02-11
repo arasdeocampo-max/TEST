@@ -148,8 +148,9 @@
               <p class="hint">Receive incoming stock and convert boxes into base units automatically.</p>
             </div>
             <div class="tx-card-body">
-              <label for="stockInMedicine">Medicine</label>
-              <select id="stockInMedicine" name="medicineId" required></select>
+              <label>Medicine</label>
+              <div class="combo" id="stockInMedicineCombo"></div>
+              <input type="hidden" id="stockInMedicineId" name="medicineId" required />
 
               <label for="stockInBatchNo">Batch No</label>
               <input id="stockInBatchNo" name="batchNo" required />
@@ -176,8 +177,9 @@
               <p class="hint">Uses FEFO and blocks expired stock from being dispensed.</p>
             </div>
             <div class="tx-card-body">
-              <label for="dispenseMedicine">Medicine</label>
-              <select id="dispenseMedicine" name="medicineId" required></select>
+              <label>Medicine</label>
+              <div class="combo" id="dispenseMedicineCombo"></div>
+              <input type="hidden" id="dispenseMedicineId" name="medicineId" required />
 
               <p id="dispenseSuggestion" class="hint hint-compact">Suggested FEFO batch: -</p>
               <p class="hint hint-compact">For Rx medicines, tick Prescription Verified before submitting.</p>
@@ -203,8 +205,9 @@
               <p class="hint">Add or subtract stock for corrections, damage, and disposals.</p>
             </div>
             <div class="tx-card-body">
-              <label for="adjustMedicine">Medicine</label>
-              <select id="adjustMedicine" name="medicineId" required></select>
+              <label>Medicine</label>
+              <div class="combo" id="adjustMedicineCombo"></div>
+              <input type="hidden" id="adjustMedicineId" name="medicineId" required />
 
               <label for="adjustReason">Reason</label>
               <select id="adjustReason" name="reason"><option value="expired disposal">expired disposal</option><option value="damaged">damaged</option><option value="missing">missing</option><option value="correction">correction</option></select>
