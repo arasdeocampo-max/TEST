@@ -188,7 +188,10 @@
               <input id="dispenseQty" name="qty" type="number" min="1" required />
 
               <label for="dispenseUnit">Unit</label>
-              <select id="dispenseUnit" name="unit"><option value="base">Base Units</option><option value="box">Boxes</option></select>
+              <select id="dispenseUnit" name="unit"><option value="base">Base Units</option><option value="boxes">Boxes</option></select>
+
+              <p id="dispenseUnitHelper" class="hint hint-compact">Select medicine and quantity to preview base-unit deduction.</p>
+              <p id="dispenseUnitWarning" class="error hint-compact" aria-live="polite"></p>
 
               <label class="inline-check"><input type="checkbox" name="rxVerified" /> Prescription Verified</label>
 

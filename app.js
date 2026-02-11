@@ -88,6 +88,24 @@
   const allBatchesFEFO = (medicineId) => state().batches.filter(b => b.medicineId === medicineId).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
   const fmtDate = (d) => new Date(d).toLocaleDateString();
 
+  function normalizeUnitInput(unit) {
+    const val = (unit || '').toString().trim().toLowerCase();
+    if (val === 'box' || val === 'boxes') return 'boxes';
+    return 'base';
+  }
+
+  function convertToBaseUnits(qty, unit, packSize) {
+    const numericQty = Number(qty);
+    const normalizedUnit = normalizeUnitInput(unit);
+    if (!Number.isFinite(numericQty)) return NaN;
+    if (normalizedUnit === 'boxes') {
+      const numericPackSize = Number(packSize);
+      if (!Number.isFinite(numericPackSize) || numericPackSize <= 0) return NaN;
+      return numericQty * numericPackSize;
+    }
+    return numericQty;
+  }
+
   const medicineCombos = {};
 
   function medicineOptionLabel(m) {
@@ -829,6 +847,7 @@
     combo: createMedicineSearch('dispenseMedicineCombo', (med) => {
       $('#dispenseMedicineId').value = med.id;
       updateDispenseSuggestion();
+      updateDispenseUnitHelper();
     })
   };
 
@@ -1150,6 +1169,48 @@
     $('#dispenseSuggestion').textContent = options.length ? `Suggested FEFO batch: ${options[0].batchNo} (expires ${options[0].expiryDate})` : 'Suggested FEFO batch: none available';
   }
 
+  function updateDispenseUnitHelper() {
+    const med = state().medicines.find(m => m.id === $('#dispenseMedicineId').value);
+    const qty = Number($('#dispenseQty').value);
+    const selectedUnit = normalizeUnitInput($('#dispenseUnit').value);
+    const helper = $('#dispenseUnitHelper');
+    const warning = $('#dispenseUnitWarning');
+    const unitSelect = $('#dispenseUnit');
+    const boxesOption = unitSelect?.querySelector('option[value="boxes"], option[value="box"]');
+
+    if (!helper || !warning || !unitSelect) return;
+
+    warning.textContent = '';
+    helper.textContent = 'Select medicine and quantity to preview base-unit deduction.';
+
+    if (!med) {
+      if (boxesOption) boxesOption.disabled = false;
+      return;
+    }
+
+    const hasValidPackSize = Number.isFinite(Number(med.packSize)) && Number(med.packSize) > 0;
+    if (boxesOption) boxesOption.disabled = !hasValidPackSize;
+
+    if (!hasValidPackSize) {
+      warning.textContent = `Boxes option unavailable for ${med.code}: pack size is missing or invalid.`;
+      if (selectedUnit === 'boxes') {
+        unitSelect.value = 'base';
+      }
+    }
+
+    if (Number.isFinite(qty) && qty > 0) {
+      const requestedBase = convertToBaseUnits(qty, unitSelect.value, med.packSize);
+      if (normalizeUnitInput(unitSelect.value) === 'boxes') {
+        if (!hasValidPackSize || !Number.isFinite(requestedBase) || requestedBase <= 0) {
+          helper.textContent = `Cannot convert boxes for ${med.code}. Define a valid pack size first.`;
+          return;
+        }
+        helper.textContent = `1 box = ${med.packSize} ${med.baseUnit}. This dispense will deduct ${requestedBase} ${med.baseUnit}.`;
+      } else {
+        helper.textContent = `This dispense will deduct ${requestedBase} ${med.baseUnit}.`;
+      }
+    }
+  }
 
   $('#dispenseForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -1159,26 +1220,37 @@
     const qty = Number(f.qty.value); if (qty <= 0) return showFormError(f, 'Quantity must be greater than zero.');
     if (med.rxRequired && state().settings.requireRxVerification && !f.rxVerified.checked) return showFormError(f, 'Prescription verification is required for Rx medicines.');
 
-    const qtyBase = f.unit.value === 'box' ? qty * med.packSize : qty;
+    const selectedUnit = normalizeUnitInput(f.unit.value);
+    const qtyBase = convertToBaseUnits(qty, selectedUnit, med.packSize);
+    if (!Number.isFinite(qtyBase) || qtyBase <= 0) return showFormError(f, 'Requested quantity must convert to more than 0 base units.');
+    if (selectedUnit === 'boxes' && (!Number.isFinite(Number(med.packSize)) || Number(med.packSize) <= 0)) {
+      return showFormError(f, `Cannot dispense in Boxes for ${med.code}: pack size is missing or invalid.`);
+    }
+    if (selectedUnit === 'boxes' && ['ml', 'g'].includes((med.baseUnit || '').toLowerCase()) && (!Number.isFinite(Number(med.packSize)) || Number(med.packSize) <= 0)) {
+      return showFormError(f, `Cannot dispense in Boxes for ${med.baseUnit}: missing pack size for conversion.`);
+    }
+
     const batches = state().batches;
     const chosen = validBatchesForDispense(med.id)[0];
     if (!chosen) return showFormError(f, 'No valid non-expired stock available.');
 
     const chosenRef = batches.find(b => b.id === chosen.id);
-    if (daysUntil(chosenRef.expiryDate) < 0) return showFormError(f, 'Cannot dispense from expired batch.');
+    if (!chosenRef || daysUntil(chosenRef.expiryDate) < 0) return showFormError(f, 'Cannot dispense from expired batch.');
     if (chosenRef.qtyBaseUnits < qtyBase) return showFormError(f, `Insufficient quantity in FEFO batch (${med.baseUnit}).`);
 
     chosenRef.qtyBaseUnits -= qtyBase;
     set(KEYS.batches, batches);
 
     const tx = state().transactions;
-    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'dispense', medicineId: med.id, batchNo: chosenRef.batchNo, qtyBaseUnits: qtyBase, user: state().session.username });
+    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'dispense', medicineId: med.id, batchNo: chosenRef.batchNo, qtyInput: qty, unitInput: selectedUnit === 'boxes' ? 'Boxes' : 'Base Units', qtyBaseUnitsDeducted: qtyBase, qtyBaseUnits: qtyBase, user: state().session.username });
     set(KEYS.transactions, tx);
     saveAudit('dispense', `${med.code}, batch ${chosenRef.batchNo}, -${qtyBase} ${med.baseUnit}`);
     f.reset();
     $('#dispenseMedicineId').value = '';
     medicineCombos.dispense?.combo?.setById('');
-    updateDispenseSuggestion(); refreshAll();
+    updateDispenseSuggestion();
+    updateDispenseUnitHelper();
+    refreshAll();
     showToast('Dispense recorded.', 'success');
   });
 
@@ -1265,9 +1337,14 @@
   $('#medicineModal').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#medicineModal').close(); });
 
   requireAuth();
+  $('#dispenseQty').addEventListener('input', updateDispenseUnitHelper);
+  $('#dispenseUnit').addEventListener('change', updateDispenseUnitHelper);
+  $('#dispenseMedicineId').addEventListener('change', updateDispenseUnitHelper);
+
   if (state().session) {
     refreshAll();
     goToPage('dashboard');
     updateDispenseSuggestion();
+    updateDispenseUnitHelper();
   }
 })();
