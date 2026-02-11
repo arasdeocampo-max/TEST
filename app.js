@@ -78,7 +78,7 @@
     $('#appView').classList.remove('hidden');
     $('#welcomeText').textContent = `Logged in as ${s.session.username} (${s.session.role})`;
     $$('.admin-only, .admin-only-content').forEach(el => el.classList.toggle('hidden', s.session.role !== 'admin'));
-    if (s.session.role !== 'admin' && ['users', 'settings'].includes(currentPage)) goToPage('dashboard');
+    if (s.session.role !== 'admin' && ['users'].includes(currentPage)) goToPage('dashboard');
     return true;
   }
 
@@ -907,7 +907,7 @@
 
   const goToPage = (page) => {
     const normalizedPage = normalizePage(page);
-    if (state().session?.role !== 'admin' && ['users', 'settings'].includes(normalizedPage)) return;
+    if (state().session?.role !== 'admin' && ['users'].includes(normalizedPage)) return;
 
     currentPage = normalizedPage;
     $$('.page').forEach(p => p.classList.remove('active'));

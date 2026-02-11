@@ -57,7 +57,7 @@
         </div>
 
         <div class="sidebar-utility">
-          <button data-page="/settings" class="nav-link admin-only">Settings</button>
+          <button data-page="/settings" class="nav-link">Settings</button>
           <button id="logoutBtn" type="button" class="btn danger w-full">Logout</button>
         </div>
       </nav>
@@ -379,19 +379,41 @@
         </div>
       </section>
 
-      <section id="page-settings" class="page admin-only-content">
-        <h3>System Settings</h3>
-        <form id="settingsForm" class="card" novalidate>
-          <label>Near expiry warning days
-            <input type="number" name="warningDays" min="1" required />
-          </label>
-          <label><input type="checkbox" name="requireRxVerification" /> Require prescription verification for Rx items</label>
-          <label>Categories (comma separated)
-            <textarea name="categories" rows="3"></textarea>
-          </label>
-          <p class="error" data-error></p>
-          <button class="btn primary">Save Settings</button>
-        </form>
+      <section id="page-settings" class="page">
+        <h3>Settings</h3>
+
+        <div class="grid split-2">
+          <article class="card">
+            <h4>Profile</h4>
+            <p class="hint">Manage profile details for the signed-in user.</p>
+            <ul class="list">
+              <li>Display name</li>
+              <li>Contact details</li>
+              <li>Default preferences</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h4>Security (Change Password)</h4>
+            <p class="hint">Password update flow placeholder for this static demo.</p>
+            <button class="btn" type="button" disabled>Change Password (Coming Soon)</button>
+          </article>
+        </div>
+
+        <div class="card admin-only-content">
+          <h4>System (Admin Only)</h4>
+          <form id="settingsForm" novalidate>
+            <label>Near expiry warning days
+              <input type="number" name="warningDays" min="1" required />
+            </label>
+            <label><input type="checkbox" name="requireRxVerification" /> Require prescription verification for Rx items</label>
+            <label>Categories (comma separated)
+              <textarea name="categories" rows="3"></textarea>
+            </label>
+            <p class="error" data-error></p>
+            <button class="btn primary">Save Settings</button>
+          </form>
+        </div>
       </section>
     </main>
   </div>
