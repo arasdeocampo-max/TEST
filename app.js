@@ -35,6 +35,74 @@
     };
   }
 
+  function getSignedInUser() {
+    const s = state();
+    if (!s.session) return null;
+    const fullUser = normalizedUsers().find((u) => u.id === s.session.id || u.username === s.session.username);
+    return {
+      ...(fullUser || {}),
+      username: s.session.username,
+      role: s.session.role,
+      id: s.session.id
+    };
+  }
+
+  function getProfileKey(username) {
+    return `pims_profile_${username}`;
+  }
+
+  function getDefaultProfile(username) {
+    return {
+      displayName: username,
+      email: '',
+      phone: '',
+      preferences: {
+        defaultTxn: 'stock-in',
+        defaultUnit: 'Base Units',
+        nearExpiryDays: 30
+      }
+    };
+  }
+
+  function getUserProfile(username) {
+    const key = getProfileKey(username);
+    const saved = get(key, null);
+    if (saved && typeof saved === 'object') {
+      const fallback = getDefaultProfile(username);
+      return {
+        ...fallback,
+        ...saved,
+        preferences: {
+          ...fallback.preferences,
+          ...(saved.preferences || {})
+        }
+      };
+    }
+    const defaults = getDefaultProfile(username);
+    set(key, defaults);
+    return defaults;
+  }
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || '').trim());
+  }
+
+  function normalizedUsers() {
+    const users = state().users;
+    let changed = false;
+    const out = users.map(u => {
+      const nu = {
+        ...u,
+        status: u.status || 'active',
+        lastLogin: Object.prototype.hasOwnProperty.call(u, 'lastLogin') ? u.lastLogin : null
+      };
+      if (nu.status !== u.status || nu.lastLogin !== u.lastLogin) changed = true;
+      return nu;
+    });
+    if (changed) set(KEYS.users, out);
+    return out;
+  }
+
   function saveAudit(action, details) {
     const s = state();
     s.audit.unshift({ timestamp: new Date().toISOString(), user: s.session?.username || 'system', role: s.session?.role || '-', action, details });
@@ -60,9 +128,11 @@
     }
     $('#loginView').classList.add('hidden');
     $('#appView').classList.remove('hidden');
-    $('#welcomeText').textContent = `Logged in as ${s.session.username} (${s.session.role})`;
+    const profile = s.session?.username ? getUserProfile(s.session.username) : null;
+    const displayName = profile?.displayName?.trim() || s.session.username;
+    $('#welcomeText').textContent = `Logged in as ${displayName} (${s.session.role})`;
     $$('.admin-only, .admin-only-content').forEach(el => el.classList.toggle('hidden', s.session.role !== 'admin'));
-    if (s.session.role !== 'admin' && ['users', 'settings'].includes(currentPage)) goToPage('dashboard');
+    if (s.session.role !== 'admin' && ['users'].includes(currentPage)) goToPage('dashboard');
     return true;
   }
 
@@ -71,6 +141,24 @@
   const validBatchesForDispense = (medicineId) => state().batches.filter(b => b.medicineId === medicineId && b.qtyBaseUnits > 0 && daysUntil(b.expiryDate) >= 0).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
   const allBatchesFEFO = (medicineId) => state().batches.filter(b => b.medicineId === medicineId).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
   const fmtDate = (d) => new Date(d).toLocaleDateString();
+
+  function normalizeUnitInput(unit) {
+    const val = (unit || '').toString().trim().toLowerCase();
+    if (val === 'box' || val === 'boxes') return 'boxes';
+    return 'base';
+  }
+
+  function convertToBaseUnits(qty, unit, packSize) {
+    const numericQty = Number(qty);
+    const normalizedUnit = normalizeUnitInput(unit);
+    if (!Number.isFinite(numericQty)) return NaN;
+    if (normalizedUnit === 'boxes') {
+      const numericPackSize = Number(packSize);
+      if (!Number.isFinite(numericPackSize) || numericPackSize <= 0) return NaN;
+      return numericQty * numericPackSize;
+    }
+    return numericQty;
+  }
 
   const medicineCombos = {};
 
@@ -81,7 +169,10 @@
 
   function createMedicineSearch(elContainerId, onSelectCallback) {
     const root = document.getElementById(elContainerId);
-    if (!root) return null;
+    if (!root) {
+      console.warn('Missing container:', elContainerId);
+      return null;
+    }
     root.innerHTML = '';
 
     const input = document.createElement('input');
@@ -187,6 +278,74 @@
     };
   }
 
+
+  function initTransactionSearch() {
+    const comboConfigs = [
+      {
+        key: 'stockIn',
+        containerId: 'stockInMedicineCombo',
+        hiddenSelector: '#stockInMedicineId',
+        onSelect: (med) => { $('#stockInMedicineId').value = med.id; }
+      },
+      {
+        key: 'dispense',
+        containerId: 'dispenseMedicineCombo',
+        hiddenSelector: '#dispenseMedicineId',
+        onSelect: (med) => {
+          $('#dispenseMedicineId').value = med.id;
+          onMedicineChange(med.id);
+        }
+      },
+      {
+        key: 'adjust',
+        containerId: 'adjustMedicineCombo',
+        hiddenSelector: '#adjustMedicineId',
+        onSelect: (med) => { $('#adjustMedicineId').value = med.id; }
+      }
+    ];
+
+    comboConfigs.forEach(cfg => {
+      if (!document.getElementById(cfg.containerId)) {
+        console.warn('Missing container:', cfg.containerId);
+        return;
+      }
+      if (medicineCombos[cfg.key]?.combo) return;
+      medicineCombos[cfg.key] = {
+        hiddenSelector: cfg.hiddenSelector,
+        combo: createMedicineSearch(cfg.containerId, cfg.onSelect)
+      };
+    });
+
+    refreshMedicineCombos();
+  }
+
+  function setActiveTransactionTab(tabName) {
+    const tab = (tabName || 'stock-in').toLowerCase();
+    $$('#transactionsTabs .segment').forEach((btn) => {
+      const active = btn.dataset.txTab === tab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
+    });
+    $$('#page-transactions [data-tx-panel]').forEach((panel) => {
+      panel.classList.toggle('active', panel.dataset.txPanel === tab);
+    });
+  }
+
+  function applyProfilePreferences() {
+    const user = getSignedInUser();
+    if (!user) return;
+    const profile = getUserProfile(user.username);
+    const preferredUnit = (profile.preferences.defaultUnit || 'Base Units').toLowerCase();
+
+    const stockInUnit = $('#stockInUnit');
+    const dispenseUnit = $('#dispenseUnit');
+    if (stockInUnit) stockInUnit.value = preferredUnit === 'box' ? 'box' : 'base';
+    if (dispenseUnit) dispenseUnit.value = preferredUnit === 'box' ? 'boxes' : 'base';
+
+    setActiveTransactionTab(profile.preferences.defaultTxn || 'stock-in');
+    updateDispenseUnitHelper();
+  }
+
   function refreshMedicineCombos() {
     const meds = state().medicines.filter(m => !m.archived);
     Object.values(medicineCombos).forEach(entry => {
@@ -194,6 +353,81 @@
       const hidden = $(entry.hiddenSelector);
       if (hidden?.value) entry.combo?.setById(hidden.value);
     });
+  }
+
+  function debounce(fn, delay = 180) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  function setupSearchWithClear({ inputEl, clearBtnEl, onChange }) {
+    if (!inputEl || !clearBtnEl || !onChange) return;
+    const emit = debounce(() => onChange(inputEl.value.trim()), 180);
+
+    const syncClear = () => clearBtnEl.classList.toggle('show', !!inputEl.value.trim());
+
+    inputEl.addEventListener('input', () => {
+      syncClear();
+      emit();
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && inputEl.value) {
+        e.preventDefault();
+        inputEl.value = '';
+        syncClear();
+        onChange('');
+      }
+    });
+
+    clearBtnEl.addEventListener('click', () => {
+      inputEl.value = '';
+      syncClear();
+      onChange('');
+      inputEl.focus();
+    });
+
+    syncClear();
+  }
+
+  function setupClearButton(inputEl, btnEl) {
+    if (!inputEl || !btnEl) return;
+
+    const sync = () => btnEl.classList.toggle('show', !!inputEl.value);
+
+    inputEl.addEventListener('input', sync);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && inputEl.value) {
+        e.preventDefault();
+        inputEl.value = '';
+        sync();
+      }
+    });
+
+    btnEl.addEventListener('click', () => {
+      inputEl.value = '';
+      sync();
+      inputEl.focus();
+    });
+
+    sync();
+  }
+
+  function togglePasswordVisibility() {
+    const passwordInput = $('#loginPassword');
+    const toggleBtn = $('#loginPasswordToggleBtn');
+    if (!passwordInput || !toggleBtn) return;
+
+    const isHidden = passwordInput.type === 'password';
+    passwordInput.type = isHidden ? 'text' : 'password';
+    toggleBtn.textContent = isHidden ? '🙈' : '👁';
+    toggleBtn.setAttribute('aria-pressed', String(isHidden));
+    toggleBtn.setAttribute('aria-label', isHidden
+      ? 'Hide password'
+      : 'Show password (Warning: will display password on screen)');
   }
 
   function refreshAll() {
@@ -204,9 +438,31 @@
     renderBatches();
     renderAlerts();
     renderReports();
+    renderTransactionsHistory();
+    renderStockInHistory();
     renderAudit();
     renderUsers();
     renderSettings();
+  }
+
+  function getTransactionsFilteredRows() {
+    const map = medicineMap();
+    const q = ($('#transactionsSearch')?.value || '').trim().toLowerCase();
+    return state().transactions.filter((t) => {
+      if (!q) return true;
+      const medicine = map[t.medicineId]?.genericName || '';
+      const dateLabel = fmtDate(t.timestamp);
+      const haystack = `${medicine} ${t.batchNo || ''} ${t.type || ''} ${dateLabel}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }
+
+  function renderTransactionsHistory() {
+    const body = $('#transactionsHistoryTable tbody');
+    if (!body) return;
+    const map = medicineMap();
+    const rows = getTransactionsFilteredRows();
+    body.innerHTML = rows.map((t) => `<tr><td>${fmtDate(t.timestamp)}</td><td>${t.type}</td><td>${map[t.medicineId]?.genericName || '-'}</td><td>${t.batchNo || '-'}</td><td>${t.qtyBaseUnits || 0}</td><td>${t.user || '-'}</td></tr>`).join('') || '<tr><td colspan="6">No matching results</td></tr>';
   }
 
   function renderNavOptions() {
@@ -266,7 +522,7 @@
       <td>${m.strengthValue || ''} ${m.strengthUnit || ''}</td><td>${m.baseUnit}</td><td>${totalForMedicine(m.id)}</td>
       <td>${m.rxRequired ? 'Rx' : 'OTC'}</td><td>${m.archived ? 'Archived' : 'Active'}</td>
       <td><button class="btn" data-act="edit">Edit</button> <button class="btn" data-act="archive">${m.archived ? 'Unarchive' : 'Archive'}</button></td>
-    </tr>`).join('') || '<tr><td colspan="10">No records.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="10">No matching results</td></tr>';
   }
 
   const batchViewState = { page: 1 };
@@ -375,7 +631,7 @@
             </table>
           </div>
         </details>`;
-      }).join('') || '<div class="card"><p class="hint">No batches found.</p></div>';
+      }).join('') || '<div class="card"><p class="hint">No matching results</p></div>';
 
       renderBatchPagination(totalPages);
     } else {
@@ -384,7 +640,7 @@
       const start = (batchViewState.page - 1) * pageSize;
       const pageRows = rows.slice(start, start + pageSize);
 
-      results.innerHTML = `<div class="table-wrap"><table id="batchFlatTable"><thead><tr><th>Medicine</th><th>Form</th><th>Batch</th><th>Expiry</th><th>Days Left</th><th>Qty (base)</th><th>Status</th></tr></thead><tbody>${pageRows.map(r => `<tr><td>${r.medicineName}</td><td>${r.form}</td><td>${r.batchNo}</td><td>${r.expiryDate}</td><td>${r.status.daysLeft}</td><td>${r.qtyBaseUnits}</td><td>${r.status.badge}</td></tr>`).join('') || '<tr><td colspan="7">No batches found.</td></tr>'}</tbody></table></div>`;
+      results.innerHTML = `<div class="table-wrap"><table id="batchFlatTable"><thead><tr><th>Medicine</th><th>Form</th><th>Batch</th><th>Expiry</th><th>Days Left</th><th>Qty (base)</th><th>Status</th></tr></thead><tbody>${pageRows.map(r => `<tr><td>${r.medicineName}</td><td>${r.form}</td><td>${r.batchNo}</td><td>${r.expiryDate}</td><td>${r.status.daysLeft}</td><td>${r.qtyBaseUnits}</td><td>${r.status.badge}</td></tr>`).join('') || '<tr><td colspan="7">No matching results</td></tr>'}</tbody></table></div>`;
       renderBatchPagination(totalPages);
     }
 
@@ -531,22 +787,194 @@
     $('#alertsBatchModal').showModal();
   }
 
+  const reportState = { stockPage: 1, movementPage: 1 };
+  const stockInLogState = { page: 1, filteredRows: [] };
+
+  function getReorderRows() {
+    const s = state();
+    const lowStockOnly = $('#reorderLowStockOnly')?.checked ?? true;
+    const includeNearExpiry = $('#reorderIncludeNearExpiry')?.checked ?? true;
+    const nearDays = Number(s.settings.warningDays || 60);
+
+    return s.medicines
+      .filter((m) => !m.archived)
+      .map((m) => {
+        const nonExpiredBatches = s.batches.filter((b) => b.medicineId === m.id && b.qtyBaseUnits > 0 && daysUntil(b.expiryDate) >= 0);
+        const availableStock = nonExpiredBatches.reduce((sum, b) => sum + b.qtyBaseUnits, 0);
+        const reorderLevel = Number(m.reorderLevelBoxes || 0) * Number(m.packSize || 0);
+        const suggestedReorderQty = Math.max(0, (reorderLevel * 2) - availableStock);
+
+        const nearExpiryQty = nonExpiredBatches
+          .filter((b) => daysUntil(b.expiryDate) <= nearDays)
+          .reduce((sum, b) => sum + b.qtyBaseUnits, 0);
+
+        const lowStock = availableStock <= reorderLevel;
+        const nearExpiryRisk = includeNearExpiry && nearExpiryQty > 0;
+        const reasons = [];
+        if (lowStock) reasons.push('Low Stock');
+        if (nearExpiryRisk) reasons.push('Near-expiry risk');
+
+        return {
+          medicineName: `${m.code} - ${m.genericName}`,
+          availableStock,
+          reorderLevel,
+          suggestedReorderQty,
+          reason: reasons.join(' / '),
+          shelfLocation: m.shelfLocation || '-',
+          include: lowStockOnly ? lowStock : (lowStock || nearExpiryRisk)
+        };
+      })
+      .filter((row) => row.include)
+      .sort((a, b) => a.availableStock - b.availableStock);
+  }
+
+  function renderReorderList() {
+    const body = $('#reorderTable tbody');
+    if (!body) return;
+    const rows = getReorderRows();
+    body.innerHTML = rows.map((r) => `<tr><td>${r.medicineName}</td><td>${r.availableStock}</td><td>${r.reorderLevel}</td><td>${r.suggestedReorderQty}</td><td>${r.reason || '-'}</td><td>${r.shelfLocation}</td></tr>`).join('') || '<tr><td colspan="6">No items matched the reorder criteria.</td></tr>';
+  }
+
   function renderReports() {
     const meds = state().medicines.filter(m => !m.archived);
-    $('#stockStatusTable tbody').innerHTML = meds.map(m => {
+    const search = ($('#stockStatusSearch')?.value || '').toLowerCase();
+    const statusFilter = $('#stockStatusFilter')?.value || 'all';
+    const pageSize = Number($('#stockStatusPageSize')?.value || 10);
+
+    let rows = meds.map(m => {
       const total = totalForMedicine(m.id);
       const reorder = m.reorderLevelBoxes * m.packSize;
-      return `<tr><td>${m.code}</td><td>${m.genericName}</td><td>${total} ${m.baseUnit}</td><td>${reorder}</td><td>${total < reorder ? 'Low Stock' : 'OK'}</td></tr>`;
-    }).join('');
+      const status = total < reorder ? 'low' : 'ok';
+      return { code: m.code, name: m.genericName, total: `${total} ${m.baseUnit}`, reorder: `${reorder}`, statusText: status === 'low' ? 'Low Stock' : 'OK', status };
+    }).filter(r => {
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (search && !`${r.code} ${r.name}`.toLowerCase().includes(search)) return false;
+      return true;
+    });
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    if (reportState.stockPage > totalPages) reportState.stockPage = totalPages;
+    const start = (reportState.stockPage - 1) * pageSize;
+    const pageRows = rows.slice(start, start + pageSize);
+
+    $('#stockStatusTable tbody').innerHTML = pageRows.map(r => `<tr><td>${r.code}</td><td>${r.name}</td><td>${r.total}</td><td>${r.reorder}</td><td>${r.statusText}</td></tr>`).join('') || '<tr><td colspan="5">No matching results</td></tr>';
+    $('#stockStatusPagination').innerHTML = `<button class="page-btn" data-stock-nav="prev" ${reportState.stockPage <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${reportState.stockPage} of ${totalPages}</span><button class="page-btn" data-stock-nav="next" ${reportState.stockPage >= totalPages ? 'disabled' : ''}>Next</button>`;
+
+    renderExpiryTimeline();
+    applyMovementFilter();
+    renderReorderList();
+  }
+
+  function renderExpiryTimeline() {
+    const expiryRows = [
+      { key: 'expired', label: 'Expired', level: 'Critical' },
+      { key: '0-30', label: '0–30 days', level: 'Critical' },
+      { key: '31-60', label: '31–60 days', level: 'Warning' },
+      { key: '61-90', label: '61–90 days', level: 'Warning' },
+      { key: '90+', label: '90+ days', level: 'Normal' }
+    ];
 
     const buckets = { expired: 0, '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
     state().batches.forEach(b => {
       if (b.qtyBaseUnits <= 0) return;
       const d = daysUntil(b.expiryDate);
-      if (d < 0) buckets.expired += 1; else if (d <= 30) buckets['0-30'] += 1; else if (d <= 60) buckets['31-60'] += 1; else if (d <= 90) buckets['61-90'] += 1; else buckets['90+'] += 1;
+      if (d < 0) buckets.expired += 1;
+      else if (d <= 30) buckets['0-30'] += 1;
+      else if (d <= 60) buckets['31-60'] += 1;
+      else if (d <= 90) buckets['61-90'] += 1;
+      else buckets['90+'] += 1;
     });
-    $('#expiryTimeline').innerHTML = Object.entries(buckets).map(([k, v]) => `<p><strong>${k}</strong>: ${v} batches</p>`).join('');
-    applyMovementFilter();
+
+    const counts = expiryRows.map(r => buckets[r.key]);
+    const maxCount = Math.max(1, ...counts);
+    const totalBatches = counts.reduce((acc, n) => acc + n, 0);
+
+    $('#expiryTimeline').innerHTML = `
+      <p class="expiry-timeline-summary">Total tracked batches: <strong>${totalBatches}</strong></p>
+      <div class="expiry-timeline-rows">
+        ${expiryRows.map(row => {
+          const count = buckets[row.key];
+          const width = Math.round((count / maxCount) * 100);
+          const badgeClass = row.level === 'Critical' ? 'danger' : row.level === 'Warning' ? 'warn' : 'ok';
+          return `
+            <div class="expiry-row">
+              <div class="expiry-row-top">
+                <p class="expiry-row-label">${row.label}</p>
+                <p class="expiry-row-count">${count} ${count === 1 ? 'batch' : 'batches'}</p>
+                <span class="badge ${badgeClass}">${row.level}</span>
+              </div>
+              <div class="expiry-progress" role="img" aria-label="${row.label}: ${count} ${count === 1 ? 'batch' : 'batches'}">
+                <span style="width: ${width}%"></span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function getStockInHistoryFilteredRows() {
+    const map = medicineMap();
+    const q = ($('#stockInLogSearch')?.value || '').trim().toLowerCase();
+    const from = $('#stockInLogFrom')?.value || '';
+    const to = $('#stockInLogTo')?.value || '';
+
+    return state().transactions
+      .filter(t => ['stock-in', 'STOCK_IN'].includes(t.type))
+      .map(t => {
+        const med = map[t.medicineId] || {};
+        const dateOnly = (t.timestamp || '').slice(0, 10);
+        const qtyInput = Number.isFinite(Number(t.qtyInput)) ? Number(t.qtyInput) : Number(t.qtyBaseUnits || 0);
+        const normalizedUnit = normalizeUnitInput(t.unitInput);
+        const unitInput = normalizedUnit === 'boxes' ? 'Boxes' : 'Base Units';
+        const qtyBaseAdded = Number.isFinite(Number(t.qtyBaseUnitsAdded)) ? Number(t.qtyBaseUnitsAdded) : Number(t.qtyBaseUnits || 0);
+        const expiryDate = t.expiryDate || state().batches.find(b => b.medicineId === t.medicineId && b.batchNo === t.batchNo)?.expiryDate || '-';
+        return {
+          timestamp: t.timestamp,
+          dateLabel: fmtDate(t.timestamp),
+          medicineText: med.code ? `${med.code} - ${med.genericName}` : (med.genericName || '-'),
+          batchNo: t.batchNo || '-',
+          expiryDate,
+          qtyInput,
+          unitInput,
+          qtyBaseAdded,
+          user: t.user || '-',
+          searchText: `${med.code || ''} ${med.genericName || ''} ${t.batchNo || ''}`.toLowerCase(),
+          dateOnly
+        };
+      })
+      .filter(r => {
+        if (q && !r.searchText.includes(q)) return false;
+        if (from && r.dateOnly && r.dateOnly < from) return false;
+        if (to && r.dateOnly && r.dateOnly > to) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }
+
+  function renderStockInHistory() {
+    const pageSize = Number($('#stockInLogPageSize')?.value || 10);
+    const rows = getStockInHistoryFilteredRows();
+    stockInLogState.filteredRows = rows;
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    if (stockInLogState.page > totalPages) stockInLogState.page = totalPages;
+    const start = (stockInLogState.page - 1) * pageSize;
+    const pageRows = rows.slice(start, start + pageSize);
+
+    $('#stockInLogTable tbody').innerHTML = pageRows.map(r => `
+      <tr>
+        <td>${r.dateLabel}</td>
+        <td>${r.medicineText}</td>
+        <td>${r.batchNo}</td>
+        <td>${r.expiryDate}</td>
+        <td>${r.qtyInput} ${r.unitInput}</td>
+        <td>${r.qtyBaseAdded}</td>
+        <td>${r.user}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="7">No stock-in transactions found for current filters.</td></tr>';
+
+    $('#stockInLogPagination').innerHTML = `<button class="page-btn" data-stockin-nav="prev" ${stockInLogState.page <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${stockInLogState.page} of ${totalPages}</span><button class="page-btn" data-stockin-nav="next" ${stockInLogState.page >= totalPages ? 'disabled' : ''}>Next</button>`;
   }
 
   function applyMovementFilter() {
@@ -554,6 +982,8 @@
     const start = $('#movementStart').value;
     const end = $('#movementEnd').value;
     const type = $('#movementType').value;
+    const pageSize = Number($('#movementPageSize')?.value || 10);
+
     const rows = state().transactions.filter(t => {
       const d = t.timestamp.slice(0, 10);
       if (start && d < start) return false;
@@ -561,7 +991,14 @@
       if (type !== 'all' && t.type !== type) return false;
       return true;
     });
-    $('#movementTable tbody').innerHTML = rows.map(t => `<tr><td>${fmtDate(t.timestamp)}</td><td>${t.type}</td><td>${map[t.medicineId]?.genericName || '-'}</td><td>${t.batchNo || '-'}</td><td>${t.qtyBaseUnits}</td><td>${t.user}</td></tr>`).join('') || '<tr><td colspan="6">No rows.</td></tr>';
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    if (reportState.movementPage > totalPages) reportState.movementPage = totalPages;
+    const sliceStart = (reportState.movementPage - 1) * pageSize;
+    const pageRows = rows.slice(sliceStart, sliceStart + pageSize);
+
+    $('#movementTable tbody').innerHTML = pageRows.map(t => `<tr><td>${fmtDate(t.timestamp)}</td><td>${t.type}</td><td>${map[t.medicineId]?.genericName || '-'}</td><td>${t.batchNo || '-'}</td><td>${t.qtyBaseUnits}</td><td>${t.user}</td></tr>`).join('') || '<tr><td colspan="6">No matching results</td></tr>';
+    $('#movementPagination').innerHTML = `<button class="page-btn" data-move-nav="prev" ${reportState.movementPage <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${reportState.movementPage} of ${totalPages}</span><button class="page-btn" data-move-nav="next" ${reportState.movementPage >= totalPages ? 'disabled' : ''}>Next</button>`;
   }
 
   function renderAudit() {
@@ -569,7 +1006,24 @@
   }
 
   function renderUsers() {
-    $('#userTable tbody').innerHTML = state().users.map(u => `<tr><td>${u.username}</td><td>${u.role}</td></tr>`).join('');
+    const users = normalizedUsers();
+    const total = users.length;
+    const adminCount = users.filter(u => u.role === 'admin').length;
+    const staffCount = users.filter(u => u.role === 'staff').length;
+    const activeCount = users.filter(u => u.status === 'active').length;
+    const disabledCount = users.filter(u => u.status === 'disabled').length;
+
+    $('#userMetricTotal').textContent = total;
+    $('#userMetricAdmin').textContent = adminCount;
+    $('#userMetricStaff').textContent = staffCount;
+    $('#userMetricStatus').textContent = `${activeCount} / ${disabledCount}`;
+
+    $('#userTable tbody').innerHTML = users.map(u => {
+      const roleBadge = `<span class="badge ${u.role === 'admin' ? 'role-admin' : 'role-staff'}">${u.role === 'admin' ? 'Admin' : 'Staff'}</span>`;
+      const statusBadge = `<span class="badge ${u.status === 'active' ? 'status-active' : 'status-disabled'}">${u.status === 'active' ? 'Active' : 'Disabled'}</span>`;
+      const lastLogin = u.lastLogin ? fmtDate(u.lastLogin) : 'Never';
+      return `<tr data-user-id="${u.id}"><td>${u.username}</td><td>${roleBadge}</td><td>${statusBadge}</td><td>${lastLogin}</td><td><button class="btn" data-user-act="toggle-role">Edit Role</button> <button class="btn" data-user-act="toggle-status">${u.status === 'active' ? 'Disable' : 'Enable'}</button></td></tr>`;
+    }).join('') || '<tr><td colspan="5">No matching results</td></tr>';
   }
 
   function renderSettings() {
@@ -577,6 +1031,75 @@
     $('#settingsForm').warningDays.value = s.warningDays;
     $('#settingsForm').requireRxVerification.checked = !!s.requireRxVerification;
     $('#settingsForm').categories.value = (s.categories || []).join(', ');
+
+    const user = getSignedInUser();
+    const form = $('#profileForm');
+    if (!form || !user) return;
+    const profile = getUserProfile(user.username);
+
+    form.displayName.value = profile.displayName || user.username;
+    form.email.value = profile.email || '';
+    form.phone.value = profile.phone || '';
+    form.defaultTxn.value = profile.preferences.defaultTxn || 'stock-in';
+    form.defaultUnit.value = profile.preferences.defaultUnit || 'Base Units';
+    form.nearExpiryDays.value = Number(profile.preferences.nearExpiryDays) || 30;
+
+    const errorEl = $('[data-profile-error]', form);
+    const saveBtn = $('#saveProfileBtn');
+    let touchedEmail = form.dataset.emailTouched === 'true';
+    let attemptedSubmit = form.dataset.submitAttempted === 'true';
+
+    const validate = () => {
+      const displayName = form.displayName.value.trim();
+      const email = form.email.value.trim();
+      const near = Number(form.nearExpiryDays.value);
+      let error = '';
+      if (!displayName) error = 'Display Name is required.';
+      else if (!isValidEmail(email) && (touchedEmail || attemptedSubmit)) error = 'Please enter a valid email.';
+      else if (!Number.isFinite(near) || near < 1 || near > 365) error = 'Near-expiry threshold must be between 1 and 365.';
+      if (errorEl) errorEl.textContent = error;
+      const hasRequired = !!displayName && isValidEmail(email) && Number.isFinite(near) && near >= 1 && near <= 365;
+      if (saveBtn) saveBtn.disabled = !hasRequired;
+      return hasRequired;
+    };
+
+    if (!form.dataset.bound) {
+      const rerender = () => validate();
+      ['displayName', 'email', 'phone', 'defaultTxn', 'defaultUnit', 'nearExpiryDays'].forEach((name) => {
+        form[name].addEventListener('input', rerender);
+        form[name].addEventListener('change', rerender);
+      });
+
+      form.email.addEventListener('blur', () => {
+        touchedEmail = true;
+        form.dataset.emailTouched = 'true';
+        validate();
+      });
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        attemptedSubmit = true;
+        form.dataset.submitAttempted = 'true';
+        if (!validate()) return;
+        const payload = {
+          displayName: form.displayName.value.trim(),
+          email: form.email.value.trim(),
+          phone: form.phone.value.trim(),
+          preferences: {
+            defaultTxn: form.defaultTxn.value,
+            defaultUnit: form.defaultUnit.value,
+            nearExpiryDays: Number(form.nearExpiryDays.value)
+          }
+        };
+        set(getProfileKey(user.username), payload);
+        showToast('Saved', 'success');
+        requireAuth();
+        if (currentPage === 'transactions') applyProfilePreferences();
+      });
+
+      form.dataset.bound = 'true';
+    }
+    validate();
   }
 
   function renderMedicineFormChoices() {
@@ -641,21 +1164,54 @@
   }
 
   let currentPage = 'dashboard';
-  const goToPage = (page) => {
-    if (state().session?.role !== 'admin' && ['users', 'settings'].includes(page)) return;
-    currentPage = page;
-    $$('.page').forEach(p => p.classList.remove('active'));
-    $(`#page-${page}`).classList.add('active');
-    $$('.nav-link').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-    $('#pageTitle').textContent = page[0].toUpperCase() + page.slice(1);
+  const sanitizePageName = (value) => {
+    const text = (value || '').toString().trim().toLowerCase();
+    const withoutHash = text.replace(/^#+/, '');
+    const withoutSlashes = withoutHash.replace(/^\/+/, '');
+    const fromPath = withoutSlashes.split('/').pop() || withoutSlashes;
+    const withoutExt = fromPath.replace(/\.html?$/i, '');
+    const cleaned = withoutExt.replace(/[^a-z0-9-]/g, '');
+    return cleaned || 'dashboard';
   };
+  const normalizePage = (page) => {
+    const cleaned = sanitizePageName(page);
+    return document.getElementById(`page-${cleaned}`) ? cleaned : 'dashboard';
+  };
+
+  const goToPage = (page) => {
+    const normalizedPage = normalizePage(page);
+    if (state().session?.role !== 'admin' && ['users'].includes(normalizedPage)) return;
+
+    currentPage = normalizedPage;
+    $$('.page').forEach(p => p.classList.remove('active'));
+    const targetPage = document.getElementById(`page-${normalizedPage}`) || document.getElementById('page-dashboard');
+    targetPage?.classList.add('active');
+    $$('.nav-link').forEach(n => n.classList.toggle('active', normalizePage(n.dataset.page) === normalizedPage));
+    $('#pageTitle').textContent = normalizedPage[0].toUpperCase() + normalizedPage.slice(1);
+
+    if (normalizedPage === 'transactions') {
+      initTransactionSearch();
+      applyProfilePreferences();
+    }
+
+    const nextHash = `#${normalizedPage}`;
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
+    }
+  };
+
+  $('#loginPasswordToggleBtn').addEventListener('click', togglePasswordVisibility);
 
   $('#loginForm').addEventListener('submit', e => {
     e.preventDefault();
     const u = $('#username').value.trim();
-    const p = $('#password').value;
-    const user = state().users.find(x => x.username === u && x.password === p);
+    const p = $('#loginPassword').value;
+    const users = normalizedUsers();
+    const user = users.find(x => x.username === u && x.password === p);
     if (!user) { $('#loginError').textContent = 'Invalid credentials.'; showToast('Login failed.', 'error'); return; }
+    if (user.status === 'disabled') { $('#loginError').textContent = 'This account is disabled.'; showToast('Account disabled. Contact admin.', 'error'); return; }
+    user.lastLogin = new Date().toISOString();
+    set(KEYS.users, users);
     set(KEYS.session, { id: user.id, username: user.username, role: user.role });
     saveAudit('login', `User ${user.username} logged in`);
     $('#loginError').textContent = '';
@@ -672,33 +1228,83 @@
 
   $('#sidebarNav').addEventListener('click', e => { if (e.target.matches('.nav-link')) goToPage(e.target.dataset.page); });
 
-  medicineCombos.stockIn = {
-    hiddenSelector: '#stockInMedicineId',
-    combo: createMedicineSearch('stockInMedicineCombo', (med) => {
-      $('#stockInMedicineId').value = med.id;
-    })
-  };
+  $('#transactionsTabs')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tx-tab]');
+    if (!btn) return;
+    setActiveTransactionTab(btn.dataset.txTab);
+  });
 
-  medicineCombos.dispense = {
-    hiddenSelector: '#dispenseMedicineId',
-    combo: createMedicineSearch('dispenseMedicineCombo', (med) => {
-      $('#dispenseMedicineId').value = med.id;
-      updateDispenseSuggestion();
-    })
-  };
+  const routeFromHash = () => normalizePage(window.location.hash || 'dashboard');
+  window.addEventListener('hashchange', () => {
+    if (!state().session) return;
+    const fromHash = routeFromHash();
+    if (fromHash !== currentPage) goToPage(fromHash);
+  });
 
-  medicineCombos.adjust = {
-    hiddenSelector: '#adjustMedicineId',
-    combo: createMedicineSearch('adjustMedicineCombo', (med) => {
-      $('#adjustMedicineId').value = med.id;
-    })
-  };
-  ['#medicineSearch', '#medicineCategoryFilter', '#medicineRxFilter', '#medicineArchiveFilter'].forEach(s => {
-    $(s).addEventListener('input', renderMedicines);
-    $(s).addEventListener('change', renderMedicines);
+  const initialRoute = routeFromHash();
+  if (state().session) {
+    goToPage(initialRoute);
+  }
+
+  setupSearchWithClear({
+    inputEl: $('#medicineSearch'),
+    clearBtnEl: $('#medicineSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#medicineCategoryFilter').value = 'all';
+        $('#medicineRxFilter').value = 'all';
+        $('#medicineArchiveFilter').value = 'active';
+      }
+      renderMedicines();
+    }
+  });
+
+  setupSearchWithClear({
+    inputEl: $('#batchSearch'),
+    clearBtnEl: $('#batchSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#batchStatusFilter').value = 'all';
+        $('#batchSort').value = 'fefo';
+        $('#batchGroupToggle').checked = true;
+        $('#batchPageSize').value = '10';
+        $('#batchMedicineFilter').value = '';
+      }
+      batchViewState.page = 1;
+      renderBatches();
+    }
+  });
+
+  setupSearchWithClear({
+    inputEl: $('#alertsSearch'),
+    clearBtnEl: $('#alertsSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#alertsFormFilter').value = 'all';
+        $('#alertsCriticalOnly').checked = false;
+      }
+      renderAlerts();
+    }
+  });
+
+  setupSearchWithClear({
+    inputEl: $('#stockStatusSearch'),
+    clearBtnEl: $('#stockStatusSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#stockStatusFilter').value = 'all';
+        $('#stockStatusPageSize').value = '10';
+      }
+      reportState.stockPage = 1;
+      renderReports();
+    }
+  });
+  ['#medicineCategoryFilter', '#medicineRxFilter', '#medicineArchiveFilter'].forEach(sel => {
+    $(sel).addEventListener('input', renderMedicines);
+    $(sel).addEventListener('change', renderMedicines);
   });
   $('#batchMedicineFilter').addEventListener('change', () => { batchViewState.page = 1; renderBatches(); });
-  ['#batchSearch', '#batchStatusFilter', '#batchSort', '#batchGroupToggle', '#batchPageSize'].forEach(sel => {
+  ['#batchStatusFilter', '#batchSort', '#batchGroupToggle', '#batchPageSize'].forEach(sel => {
     $(sel).addEventListener('input', () => { batchViewState.page = 1; renderBatches(); });
     $(sel).addEventListener('change', () => { batchViewState.page = 1; renderBatches(); });
   });
@@ -725,7 +1331,7 @@
     renderAlerts();
   });
 
-  ['#alertsSearch', '#alertsFormFilter', '#alertsCriticalOnly'].forEach(sel => {
+  ['#alertsFormFilter', '#alertsCriticalOnly'].forEach(sel => {
     $(sel).addEventListener('input', renderAlerts);
     $(sel).addEventListener('change', renderAlerts);
   });
@@ -737,6 +1343,80 @@
   });
 
   $('#closeAlertsBatchModal').addEventListener('click', () => $('#alertsBatchModal').close());
+
+  $('#addUserBtn').addEventListener('click', () => {
+    if (state().session?.role !== 'admin') return;
+    const f = $('#userForm');
+    f.reset();
+    f.id.value = '';
+    f.username.readOnly = false;
+    $('[data-error]', f).textContent = '';
+    $('#userModalTitle').textContent = 'Add User';
+    $('#userModal').showModal();
+  });
+
+  $('#userForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const users = normalizedUsers();
+    const username = f.username.value.trim();
+    const role = f.role.value;
+    const password = f.password.value;
+    if (!username) return $('[data-error]', f).textContent = 'Username is required.';
+    if (!f.id.value && !password) return $('[data-error]', f).textContent = 'Temporary password is required for new users.';
+    if (users.some(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== f.id.value)) return $('[data-error]', f).textContent = 'Username already exists.';
+
+    const payload = { id: f.id.value || uid('u'), username, role, status: 'active', lastLogin: null, name: username };
+    const idx = users.findIndex(u => u.id === payload.id);
+    if (idx >= 0) {
+      const next = { ...users[idx], ...payload };
+      if (password) next.password = password;
+      users[idx] = next;
+      if (state().session?.id === next.id) set(KEYS.session, { ...state().session, role: next.role });
+    } else {
+      users.push({ ...payload, password });
+    }
+    set(KEYS.users, users);
+    saveAudit(idx >= 0 ? 'user update' : 'user create', `${username} (${role})`);
+    $('#userModal').close();
+    renderUsers();
+    showToast('User saved.', 'success');
+  });
+
+  $('#userTable tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-user-act]');
+    if (!btn) return;
+    const tr = e.target.closest('tr[data-user-id]');
+    const userId = tr?.dataset.userId;
+    const users = normalizedUsers();
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const session = state().session;
+
+    if (btn.dataset.userAct === 'toggle-role') {
+      if (session?.role !== 'admin') return;
+      const f = $('#userForm');
+      f.id.value = user.id;
+      f.username.value = user.username;
+      f.role.value = user.role;
+      f.password.value = '';
+      f.username.readOnly = true;
+      $('[data-error]', f).textContent = '';
+      $('#userModalTitle').textContent = 'Edit User Role';
+      $('#userModal').showModal();
+      return;
+    }
+
+    if (btn.dataset.userAct === 'toggle-status') {
+      if (session?.role !== 'admin') return;
+      if (session?.id === user.id && user.role === 'admin' && user.status === 'active') { showToast('Cannot disable currently logged-in admin.', 'error'); return; }
+      user.status = user.status === 'active' ? 'disabled' : 'active';
+      set(KEYS.users, users);
+      saveAudit('user status change', `${user.username} => ${user.status}`);
+      renderUsers();
+      showToast('User status updated.', 'success');
+    }
+  });
 
   $('#dosageChips').addEventListener('click', (e) => {
     const chip = e.target.closest('.chip');
@@ -850,7 +1530,9 @@
     const med = state().medicines.find(m => m.id === f.medicineId.value);
     if (!med) return showFormError(f, 'Choose a medicine.');
     const qty = Number(f.qty.value); if (qty <= 0) return showFormError(f, 'Quantity must be greater than zero.');
-    const qtyBase = f.unit.value === 'box' ? qty * med.packSize : qty;
+    const selectedUnit = normalizeUnitInput(f.unit.value);
+    const qtyBase = convertToBaseUnits(qty, selectedUnit, med.packSize);
+    if (!Number.isFinite(qtyBase) || qtyBase <= 0) return showFormError(f, 'Unable to convert quantity to base units. Check unit and pack size.');
 
     const batches = state().batches;
     const batchNo = f.batchNo.value.trim();
@@ -860,7 +1542,7 @@
 
     set(KEYS.batches, batches);
     const tx = state().transactions;
-    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'stock-in', medicineId: med.id, batchNo, qtyBaseUnits: qtyBase, user: state().session.username });
+    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'stock-in', medicineId: med.id, batchNo, expiryDate: f.expiryDate.value, qtyInput: qty, unitInput: selectedUnit === 'boxes' ? 'Boxes' : 'Base Units', qtyBaseUnitsAdded: qtyBase, qtyBaseUnits: qtyBase, user: state().session.username });
     set(KEYS.transactions, tx);
     saveAudit('stock-in', `${med.code}, batch ${batchNo}, +${qtyBase} ${med.baseUnit}`);
     f.reset();
@@ -877,6 +1559,81 @@
     $('#dispenseSuggestion').textContent = options.length ? `Suggested FEFO batch: ${options[0].batchNo} (expires ${options[0].expiryDate})` : 'Suggested FEFO batch: none available';
   }
 
+  function onMedicineChange(medicineId) {
+    console.log('[PIMS] medicine selection changed');
+    console.log('[PIMS] selected medicineId/value:', medicineId);
+
+    const med = state().medicines.find(m => m.id === medicineId);
+    console.log('[PIMS] found medicine object:', med);
+
+    const detailsEl = $('#dispenseMedicineDetails');
+    const stockEl = $('#dispenseStockDisplay');
+    const presetEl = $('#dispenseQtyPreset');
+    if (!detailsEl || !stockEl || !presetEl) return;
+
+    if (!med) {
+      detailsEl.textContent = 'Select a medicine to view details.';
+      stockEl.textContent = 'Current stock: -';
+      presetEl.innerHTML = '<option value="">Select quick quantity</option>';
+      return;
+    }
+
+    detailsEl.textContent = `${med.code} — ${med.genericName} (${med.dosageForm}) • Base unit: ${med.baseUnit}`;
+
+    const totalStock = totalForMedicine(med.id);
+    const approxBoxes = Number(med.packSize) > 0 ? ` (~${(totalStock / Number(med.packSize)).toFixed(1)} boxes)` : '';
+    stockEl.textContent = `Current stock: ${totalStock} ${med.baseUnit}${approxBoxes}`;
+
+    const base = (med.baseUnit || '').toLowerCase();
+    const quickQty = ['tablet', 'capsule'].includes(base) ? [1, 5, 10, 20, 50] : ['ml', 'g'].includes(base) ? [5, 10, 20, 50, 100] : [1, 5, 10, 20, 50];
+    presetEl.innerHTML = '<option value="">Select quick quantity</option>' + quickQty.map(q => `<option value="${q}">${q}</option>`).join('');
+
+    updateDispenseSuggestion();
+    updateDispenseUnitHelper();
+  }
+
+  function updateDispenseUnitHelper() {
+    const med = state().medicines.find(m => m.id === $('#dispenseMedicineId').value);
+    const qty = Number($('#dispenseQty').value);
+    const selectedUnit = normalizeUnitInput($('#dispenseUnit').value);
+    const helper = $('#dispenseUnitHelper');
+    const warning = $('#dispenseUnitWarning');
+    const unitSelect = $('#dispenseUnit');
+    const boxesOption = unitSelect?.querySelector('option[value="boxes"], option[value="box"]');
+
+    if (!helper || !warning || !unitSelect) return;
+
+    warning.textContent = '';
+    helper.textContent = 'Select medicine and quantity to preview base-unit deduction.';
+
+    if (!med) {
+      if (boxesOption) boxesOption.disabled = false;
+      return;
+    }
+
+    const hasValidPackSize = Number.isFinite(Number(med.packSize)) && Number(med.packSize) > 0;
+    if (boxesOption) boxesOption.disabled = !hasValidPackSize;
+
+    if (!hasValidPackSize) {
+      warning.textContent = `Boxes option unavailable for ${med.code}: pack size is missing or invalid.`;
+      if (selectedUnit === 'boxes') {
+        unitSelect.value = 'base';
+      }
+    }
+
+    if (Number.isFinite(qty) && qty > 0) {
+      const requestedBase = convertToBaseUnits(qty, unitSelect.value, med.packSize);
+      if (normalizeUnitInput(unitSelect.value) === 'boxes') {
+        if (!hasValidPackSize || !Number.isFinite(requestedBase) || requestedBase <= 0) {
+          helper.textContent = `Cannot convert boxes for ${med.code}. Define a valid pack size first.`;
+          return;
+        }
+        helper.textContent = `1 box = ${med.packSize} ${med.baseUnit}. This dispense will deduct ${requestedBase} ${med.baseUnit}.`;
+      } else {
+        helper.textContent = `This dispense will deduct ${requestedBase} ${med.baseUnit}.`;
+      }
+    }
+  }
 
   $('#dispenseForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -886,26 +1643,38 @@
     const qty = Number(f.qty.value); if (qty <= 0) return showFormError(f, 'Quantity must be greater than zero.');
     if (med.rxRequired && state().settings.requireRxVerification && !f.rxVerified.checked) return showFormError(f, 'Prescription verification is required for Rx medicines.');
 
-    const qtyBase = f.unit.value === 'box' ? qty * med.packSize : qty;
+    const selectedUnit = normalizeUnitInput(f.unit.value);
+    const qtyBase = convertToBaseUnits(qty, selectedUnit, med.packSize);
+    if (!Number.isFinite(qtyBase) || qtyBase <= 0) return showFormError(f, 'Requested quantity must convert to more than 0 base units.');
+    if (selectedUnit === 'boxes' && (!Number.isFinite(Number(med.packSize)) || Number(med.packSize) <= 0)) {
+      return showFormError(f, `Cannot dispense in Boxes for ${med.code}: pack size is missing or invalid.`);
+    }
+    if (selectedUnit === 'boxes' && ['ml', 'g'].includes((med.baseUnit || '').toLowerCase()) && (!Number.isFinite(Number(med.packSize)) || Number(med.packSize) <= 0)) {
+      return showFormError(f, `Cannot dispense in Boxes for ${med.baseUnit}: missing pack size for conversion.`);
+    }
+
     const batches = state().batches;
     const chosen = validBatchesForDispense(med.id)[0];
     if (!chosen) return showFormError(f, 'No valid non-expired stock available.');
 
     const chosenRef = batches.find(b => b.id === chosen.id);
-    if (daysUntil(chosenRef.expiryDate) < 0) return showFormError(f, 'Cannot dispense from expired batch.');
+    if (!chosenRef || daysUntil(chosenRef.expiryDate) < 0) return showFormError(f, 'Cannot dispense from expired batch.');
     if (chosenRef.qtyBaseUnits < qtyBase) return showFormError(f, `Insufficient quantity in FEFO batch (${med.baseUnit}).`);
 
     chosenRef.qtyBaseUnits -= qtyBase;
     set(KEYS.batches, batches);
 
     const tx = state().transactions;
-    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'dispense', medicineId: med.id, batchNo: chosenRef.batchNo, qtyBaseUnits: qtyBase, user: state().session.username });
+    tx.unshift({ id: uid('t'), timestamp: new Date().toISOString(), type: 'dispense', medicineId: med.id, batchNo: chosenRef.batchNo, qtyInput: qty, unitInput: selectedUnit === 'boxes' ? 'Boxes' : 'Base Units', qtyBaseUnitsDeducted: qtyBase, qtyBaseUnits: qtyBase, user: state().session.username });
     set(KEYS.transactions, tx);
     saveAudit('dispense', `${med.code}, batch ${chosenRef.batchNo}, -${qtyBase} ${med.baseUnit}`);
     f.reset();
     $('#dispenseMedicineId').value = '';
     medicineCombos.dispense?.combo?.setById('');
-    updateDispenseSuggestion(); refreshAll();
+    updateDispenseSuggestion();
+    onMedicineChange($('#dispenseMedicineId').value);
+    updateDispenseUnitHelper();
+    refreshAll();
     showToast('Dispense recorded.', 'success');
   });
 
@@ -935,7 +1704,68 @@
     showToast('Adjustment saved.', 'success');
   });
 
-  $('#applyMovementFilter').addEventListener('click', (e) => { e.preventDefault(); applyMovementFilter(); });
+  $('#applyMovementFilter').addEventListener('click', (e) => { e.preventDefault(); reportState.movementPage = 1; applyMovementFilter(); });
+
+  ['#stockStatusFilter', '#stockStatusPageSize'].forEach(sel => {
+    $(sel).addEventListener('input', () => { reportState.stockPage = 1; renderReports(); });
+    $(sel).addEventListener('change', () => { reportState.stockPage = 1; renderReports(); });
+  });
+
+  $('#stockStatusPagination').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-stock-nav]');
+    if (!btn) return;
+    if (btn.dataset.stockNav === 'prev') reportState.stockPage = Math.max(1, reportState.stockPage - 1);
+    if (btn.dataset.stockNav === 'next') reportState.stockPage += 1;
+    renderReports();
+  });
+
+  $('#movementPageSize').addEventListener('change', () => { reportState.movementPage = 1; applyMovementFilter(); });
+  $('#movementPagination').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-move-nav]');
+    if (!btn) return;
+    if (btn.dataset.moveNav === 'prev') reportState.movementPage = Math.max(1, reportState.movementPage - 1);
+    if (btn.dataset.moveNav === 'next') reportState.movementPage += 1;
+    applyMovementFilter();
+  });
+  setupSearchWithClear({
+    inputEl: $('#stockInLogSearch'),
+    clearBtnEl: $('#stockInLogSearchClear'),
+    onChange: () => {
+      stockInLogState.page = 1;
+      renderStockInHistory();
+    }
+  });
+
+  setupSearchWithClear({
+    inputEl: $('#transactionsSearch'),
+    clearBtnEl: $('#transactionsSearchClear'),
+    onChange: () => {
+      renderTransactionsHistory();
+    }
+  });
+
+  ['#stockInLogFrom', '#stockInLogTo', '#stockInLogPageSize'].forEach(sel => {
+    $(sel).addEventListener('input', () => { stockInLogState.page = 1; renderStockInHistory(); });
+    $(sel).addEventListener('change', () => { stockInLogState.page = 1; renderStockInHistory(); });
+  });
+
+  $('#stockInLogPagination').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-stockin-nav]');
+    if (!btn) return;
+    if (btn.dataset.stockinNav === 'prev') stockInLogState.page = Math.max(1, stockInLogState.page - 1);
+    if (btn.dataset.stockinNav === 'next') stockInLogState.page += 1;
+    renderStockInHistory();
+  });
+
+  $('#exportStockInLog').addEventListener('click', () => {
+    const rows = [['Date/Time', 'Medicine', 'Batch No', 'Expiry Date', 'Qty (input) + Unit', 'Qty Added (base units)', 'User']];
+    getStockInHistoryFilteredRows().forEach(r => {
+      rows.push([r.dateLabel, r.medicineText, r.batchNo, r.expiryDate, `${r.qtyInput} ${r.unitInput}`, String(r.qtyBaseAdded), r.user]);
+    });
+    exportCsv('stock_in_receiving_log.csv', rows);
+    showToast('Stock-in log exported.', 'info');
+  });
+
   $('#exportStockStatus').addEventListener('click', () => {
     const rows = [['Code', 'Medicine', 'Total Base Units', 'Reorder Point', 'Status']];
     $('#stockStatusTable tbody').querySelectorAll('tr').forEach(tr => rows.push([...tr.children].map(td => td.textContent.trim())));
@@ -949,6 +1779,52 @@
     $('#movementTable tbody').querySelectorAll('tr').forEach(tr => rows.push([...tr.children].map(td => td.textContent.trim())));
     exportCsv('stock_movement_report.csv', rows);
     showToast('Stock movement exported.', 'info');
+  });
+
+  $('#exportReorderList')?.addEventListener('click', () => {
+    const rows = [['Medicine Name', 'Available Stock (base units)', 'Reorder Level', 'Suggested Reorder Qty', 'Reason', 'Shelf Location']];
+    getReorderRows().forEach((r) => rows.push([r.medicineName, String(r.availableStock), String(r.reorderLevel), String(r.suggestedReorderQty), r.reason || '-', r.shelfLocation]));
+    exportCsv('reorder_list.csv', rows);
+    showToast('Reorder list exported.', 'info');
+  });
+
+  $('#printReorderList')?.addEventListener('click', () => {
+    const rows = getReorderRows();
+    const win = window.open('', '_blank', 'width=1000,height=700');
+    if (!win) return;
+    const generated = new Date().toLocaleString();
+    win.document.write(`
+      <html>
+      <head>
+        <title>Reorder List</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+          h1 { margin: 0 0 8px; }
+          p { margin: 0 0 16px; color: #475569; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+          th { background: #f1f5f9; }
+        </style>
+      </head>
+      <body>
+        <h1>Reorder List</h1>
+        <p>Date generated: ${generated}</p>
+        <table>
+          <thead><tr><th>Medicine Name</th><th>Available Stock (base units)</th><th>Reorder Level</th><th>Suggested Reorder Qty</th><th>Reason</th><th>Shelf Location</th></tr></thead>
+          <tbody>
+            ${rows.map((r) => `<tr><td>${r.medicineName}</td><td>${r.availableStock}</td><td>${r.reorderLevel}</td><td>${r.suggestedReorderQty}</td><td>${r.reason || '-'}</td><td>${r.shelfLocation}</td></tr>`).join('') || '<tr><td colspan="6">No items matched the reorder criteria.</td></tr>'}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+  });
+
+  ['#reorderLowStockOnly', '#reorderIncludeNearExpiry'].forEach((sel) => {
+    $(sel)?.addEventListener('change', renderReorderList);
   });
 
   $('#settingsForm').addEventListener('submit', e => {
@@ -969,10 +1845,31 @@
 
   $('#medicineModal').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#medicineModal').close(); });
 
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initTransactionSearch(), { once: true });
+  } else {
+    initTransactionSearch();
+  }
+
   requireAuth();
+  $('#dispenseQty').addEventListener('input', updateDispenseUnitHelper);
+  $('#dispenseUnit').addEventListener('change', updateDispenseUnitHelper);
+  $('#dispenseMedicineId').addEventListener('change', () => {
+    updateDispenseUnitHelper();
+    onMedicineChange($('#dispenseMedicineId').value);
+  });
+  $('#dispenseQtyPreset').addEventListener('change', (e) => {
+    const value = Number(e.target.value);
+    if (!Number.isFinite(value) || value <= 0) return;
+    $('#dispenseQty').value = String(value);
+    updateDispenseUnitHelper();
+  });
+
   if (state().session) {
     refreshAll();
-    goToPage('dashboard');
+    goToPage(initialRoute || 'dashboard');
     updateDispenseSuggestion();
+    onMedicineChange($('#dispenseMedicineId').value);
+    updateDispenseUnitHelper();
   }
 })();
