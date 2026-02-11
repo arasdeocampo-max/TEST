@@ -104,8 +104,8 @@
 
   function seed() {
     const users = [
-      { id: 'u1', username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User' },
-      { id: 'u2', username: 'staff', password: 'staff123', role: 'staff', name: 'Staff User' }
+      { id: 'u1', username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', status: 'active', lastLogin: null },
+      { id: 'u2', username: 'staff', password: 'staff123', role: 'staff', name: 'Staff User', status: 'active', lastLogin: null }
     ];
 
     const medicines = seedMedicines();
