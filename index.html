@@ -317,8 +317,28 @@
       </section>
 
       <section id="page-users" class="page admin-only-content">
-        <h3>User Management (Demo)</h3>
-        <div class="table-wrap"><table id="userTable"><thead><tr><th>Username</th><th>Role</th></tr></thead><tbody></tbody></table></div>
+        <div class="section-head">
+          <h3>User Management (Demo)</h3>
+          <button id="addUserBtn" class="btn primary">Add User</button>
+        </div>
+
+        <div class="grid cards users-summary">
+          <article class="card"><h4>Total Users</h4><p id="userMetricTotal">0</p></article>
+          <article class="card"><h4>Admin Users</h4><p id="userMetricAdmin">0</p></article>
+          <article class="card"><h4>Staff Users</h4><p id="userMetricStaff">0</p></article>
+          <article class="card"><h4>Active vs Disabled</h4><p id="userMetricStatus">0 / 0</p></article>
+        </div>
+
+        <div class="table-wrap"><table id="userTable"><thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+
+        <div class="card role-explainer">
+          <h4>Role Access Guide</h4>
+          <ul class="list">
+            <li><strong>Admin</strong>: full access to users, settings, inventory modules, transactions, and reports.</li>
+            <li><strong>Staff</strong>: operational access only (transactions and inventory viewing).</li>
+          </ul>
+          <p class="hint"><strong>Accountability:</strong> All user actions are recorded in the Audit Trail module.</p>
+        </div>
       </section>
 
       <section id="page-settings" class="page admin-only-content">
@@ -412,6 +432,24 @@
     <div class="modal-actions">
       <button class="btn" id="closeAlertsBatchModal">Close</button>
     </div>
+  </dialog>
+
+
+  <dialog id="userModal" aria-labelledby="userModalTitle">
+    <form method="dialog" id="userForm" novalidate>
+      <h3 id="userModalTitle">Add User</h3>
+      <input type="hidden" name="id" />
+      <label>Username<input name="username" required /></label>
+      <label>Role
+        <select name="role"><option value="admin">Admin</option><option value="staff">Staff</option></select>
+      </label>
+      <label>Temporary Password (for new user)<input name="password" /></label>
+      <p class="error" data-error></p>
+      <div class="modal-actions">
+        <button value="cancel" class="btn">Cancel</button>
+        <button value="default" class="btn primary">Save User</button>
+      </div>
+    </form>
   </dialog>
 
   <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>

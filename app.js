@@ -35,6 +35,22 @@
     };
   }
 
+  function normalizedUsers() {
+    const users = state().users;
+    let changed = false;
+    const out = users.map(u => {
+      const nu = {
+        ...u,
+        status: u.status || 'active',
+        lastLogin: Object.prototype.hasOwnProperty.call(u, 'lastLogin') ? u.lastLogin : null
+      };
+      if (nu.status !== u.status || nu.lastLogin !== u.lastLogin) changed = true;
+      return nu;
+    });
+    if (changed) set(KEYS.users, out);
+    return out;
+  }
+
   function saveAudit(action, details) {
     const s = state();
     s.audit.unshift({ timestamp: new Date().toISOString(), user: s.session?.username || 'system', role: s.session?.role || '-', action, details });
@@ -635,7 +651,24 @@
   }
 
   function renderUsers() {
-    $('#userTable tbody').innerHTML = state().users.map(u => `<tr><td>${u.username}</td><td>${u.role}</td></tr>`).join('');
+    const users = normalizedUsers();
+    const total = users.length;
+    const adminCount = users.filter(u => u.role === 'admin').length;
+    const staffCount = users.filter(u => u.role === 'staff').length;
+    const activeCount = users.filter(u => u.status === 'active').length;
+    const disabledCount = users.filter(u => u.status === 'disabled').length;
+
+    $('#userMetricTotal').textContent = total;
+    $('#userMetricAdmin').textContent = adminCount;
+    $('#userMetricStaff').textContent = staffCount;
+    $('#userMetricStatus').textContent = `${activeCount} / ${disabledCount}`;
+
+    $('#userTable tbody').innerHTML = users.map(u => {
+      const roleBadge = `<span class="badge ${u.role === 'admin' ? 'role-admin' : 'role-staff'}">${u.role === 'admin' ? 'Admin' : 'Staff'}</span>`;
+      const statusBadge = `<span class="badge ${u.status === 'active' ? 'status-active' : 'status-disabled'}">${u.status === 'active' ? 'Active' : 'Disabled'}</span>`;
+      const lastLogin = u.lastLogin ? fmtDate(u.lastLogin) : 'Never';
+      return `<tr data-user-id="${u.id}"><td>${u.username}</td><td>${roleBadge}</td><td>${statusBadge}</td><td>${lastLogin}</td><td><button class="btn" data-user-act="toggle-role">Edit Role</button> <button class="btn" data-user-act="toggle-status">${u.status === 'active' ? 'Disable' : 'Enable'}</button></td></tr>`;
+    }).join('') || '<tr><td colspan="5">No matching results</td></tr>';
   }
 
   function renderSettings() {
@@ -720,8 +753,12 @@
     e.preventDefault();
     const u = $('#username').value.trim();
     const p = $('#password').value;
-    const user = state().users.find(x => x.username === u && x.password === p);
+    const users = normalizedUsers();
+    const user = users.find(x => x.username === u && x.password === p);
     if (!user) { $('#loginError').textContent = 'Invalid credentials.'; showToast('Login failed.', 'error'); return; }
+    if (user.status === 'disabled') { $('#loginError').textContent = 'This account is disabled.'; showToast('Account disabled. Contact admin.', 'error'); return; }
+    user.lastLogin = new Date().toISOString();
+    set(KEYS.users, users);
     set(KEYS.session, { id: user.id, username: user.username, role: user.role });
     saveAudit('login', `User ${user.username} logged in`);
     $('#loginError').textContent = '';
@@ -857,6 +894,80 @@
   });
 
   $('#closeAlertsBatchModal').addEventListener('click', () => $('#alertsBatchModal').close());
+
+  $('#addUserBtn').addEventListener('click', () => {
+    if (state().session?.role !== 'admin') return;
+    const f = $('#userForm');
+    f.reset();
+    f.id.value = '';
+    f.username.readOnly = false;
+    $('[data-error]', f).textContent = '';
+    $('#userModalTitle').textContent = 'Add User';
+    $('#userModal').showModal();
+  });
+
+  $('#userForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const users = normalizedUsers();
+    const username = f.username.value.trim();
+    const role = f.role.value;
+    const password = f.password.value;
+    if (!username) return $('[data-error]', f).textContent = 'Username is required.';
+    if (!f.id.value && !password) return $('[data-error]', f).textContent = 'Temporary password is required for new users.';
+    if (users.some(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== f.id.value)) return $('[data-error]', f).textContent = 'Username already exists.';
+
+    const payload = { id: f.id.value || uid('u'), username, role, status: 'active', lastLogin: null, name: username };
+    const idx = users.findIndex(u => u.id === payload.id);
+    if (idx >= 0) {
+      const next = { ...users[idx], ...payload };
+      if (password) next.password = password;
+      users[idx] = next;
+      if (state().session?.id === next.id) set(KEYS.session, { ...state().session, role: next.role });
+    } else {
+      users.push({ ...payload, password });
+    }
+    set(KEYS.users, users);
+    saveAudit(idx >= 0 ? 'user update' : 'user create', `${username} (${role})`);
+    $('#userModal').close();
+    renderUsers();
+    showToast('User saved.', 'success');
+  });
+
+  $('#userTable tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-user-act]');
+    if (!btn) return;
+    const tr = e.target.closest('tr[data-user-id]');
+    const userId = tr?.dataset.userId;
+    const users = normalizedUsers();
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const session = state().session;
+
+    if (btn.dataset.userAct === 'toggle-role') {
+      if (session?.role !== 'admin') return;
+      const f = $('#userForm');
+      f.id.value = user.id;
+      f.username.value = user.username;
+      f.role.value = user.role;
+      f.password.value = '';
+      f.username.readOnly = true;
+      $('[data-error]', f).textContent = '';
+      $('#userModalTitle').textContent = 'Edit User Role';
+      $('#userModal').showModal();
+      return;
+    }
+
+    if (btn.dataset.userAct === 'toggle-status') {
+      if (session?.role !== 'admin') return;
+      if (session?.id === user.id && user.role === 'admin' && user.status === 'active') { showToast('Cannot disable currently logged-in admin.', 'error'); return; }
+      user.status = user.status === 'active' ? 'disabled' : 'active';
+      set(KEYS.users, users);
+      saveAudit('user status change', `${user.username} => ${user.status}`);
+      renderUsers();
+      showToast('User status updated.', 'success');
+    }
+  });
 
   $('#dosageChips').addEventListener('click', (e) => {
     const chip = e.target.closest('.chip');
