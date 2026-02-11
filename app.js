@@ -115,7 +115,10 @@
 
   function createMedicineSearch(elContainerId, onSelectCallback) {
     const root = document.getElementById(elContainerId);
-    if (!root) return null;
+    if (!root) {
+      console.warn('Missing container:', elContainerId);
+      return null;
+    }
     root.innerHTML = '';
 
     const input = document.createElement('input');
@@ -219,6 +222,48 @@
         return stateCombo.selectedId;
       }
     };
+  }
+
+
+  function initTransactionSearch() {
+    const comboConfigs = [
+      {
+        key: 'stockIn',
+        containerId: 'stockInMedicineCombo',
+        hiddenSelector: '#stockInMedicineId',
+        onSelect: (med) => { $('#stockInMedicineId').value = med.id; }
+      },
+      {
+        key: 'dispense',
+        containerId: 'dispenseMedicineCombo',
+        hiddenSelector: '#dispenseMedicineId',
+        onSelect: (med) => {
+          $('#dispenseMedicineId').value = med.id;
+          updateDispenseSuggestion();
+          updateDispenseUnitHelper();
+        }
+      },
+      {
+        key: 'adjust',
+        containerId: 'adjustMedicineCombo',
+        hiddenSelector: '#adjustMedicineId',
+        onSelect: (med) => { $('#adjustMedicineId').value = med.id; }
+      }
+    ];
+
+    comboConfigs.forEach(cfg => {
+      if (!document.getElementById(cfg.containerId)) {
+        console.warn('Missing container:', cfg.containerId);
+        return;
+      }
+      if (medicineCombos[cfg.key]?.combo) return;
+      medicineCombos[cfg.key] = {
+        hiddenSelector: cfg.hiddenSelector,
+        combo: createMedicineSearch(cfg.containerId, cfg.onSelect)
+      };
+    });
+
+    refreshMedicineCombos();
   }
 
   function refreshMedicineCombos() {
@@ -915,6 +960,10 @@
     $$('.nav-link').forEach(n => n.classList.toggle('active', normalizePage(n.dataset.page) === normalizedPage));
     $('#pageTitle').textContent = normalizedPage[0].toUpperCase() + normalizedPage.slice(1);
 
+    if (normalizedPage === 'transactions') {
+      initTransactionSearch();
+    }
+
     if (history?.replaceState) {
       history.replaceState(null, '', `/${normalizedPage}`);
     }
@@ -954,29 +1003,6 @@
   if (state().session && document.querySelector(`#page-${initialRoute}`)) {
     goToPage(initialRoute);
   }
-
-  medicineCombos.stockIn = {
-    hiddenSelector: '#stockInMedicineId',
-    combo: createMedicineSearch('stockInMedicineCombo', (med) => {
-      $('#stockInMedicineId').value = med.id;
-    })
-  };
-
-  medicineCombos.dispense = {
-    hiddenSelector: '#dispenseMedicineId',
-    combo: createMedicineSearch('dispenseMedicineCombo', (med) => {
-      $('#dispenseMedicineId').value = med.id;
-      updateDispenseSuggestion();
-      updateDispenseUnitHelper();
-    })
-  };
-
-  medicineCombos.adjust = {
-    hiddenSelector: '#adjustMedicineId',
-    combo: createMedicineSearch('adjustMedicineCombo', (med) => {
-      $('#adjustMedicineId').value = med.id;
-    })
-  };
 
   setupSearchWithClear({
     inputEl: $('#medicineSearch'),
@@ -1488,6 +1514,12 @@
   });
 
   $('#medicineModal').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#medicineModal').close(); });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initTransactionSearch(), { once: true });
+  } else {
+    initTransactionSearch();
+  }
 
   requireAuth();
   $('#dispenseQty').addEventListener('input', updateDispenseUnitHelper);
