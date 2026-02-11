@@ -531,13 +531,32 @@
     $('#alertsBatchModal').showModal();
   }
 
+  const reportState = { stockPage: 1, movementPage: 1 };
+
   function renderReports() {
     const meds = state().medicines.filter(m => !m.archived);
-    $('#stockStatusTable tbody').innerHTML = meds.map(m => {
+    const search = ($('#stockStatusSearch')?.value || '').toLowerCase();
+    const statusFilter = $('#stockStatusFilter')?.value || 'all';
+    const pageSize = Number($('#stockStatusPageSize')?.value || 10);
+
+    let rows = meds.map(m => {
       const total = totalForMedicine(m.id);
       const reorder = m.reorderLevelBoxes * m.packSize;
-      return `<tr><td>${m.code}</td><td>${m.genericName}</td><td>${total} ${m.baseUnit}</td><td>${reorder}</td><td>${total < reorder ? 'Low Stock' : 'OK'}</td></tr>`;
-    }).join('');
+      const status = total < reorder ? 'low' : 'ok';
+      return { code: m.code, name: m.genericName, total: `${total} ${m.baseUnit}`, reorder: `${reorder}`, statusText: status === 'low' ? 'Low Stock' : 'OK', status };
+    }).filter(r => {
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (search && !`${r.code} ${r.name}`.toLowerCase().includes(search)) return false;
+      return true;
+    });
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    if (reportState.stockPage > totalPages) reportState.stockPage = totalPages;
+    const start = (reportState.stockPage - 1) * pageSize;
+    const pageRows = rows.slice(start, start + pageSize);
+
+    $('#stockStatusTable tbody').innerHTML = pageRows.map(r => `<tr><td>${r.code}</td><td>${r.name}</td><td>${r.total}</td><td>${r.reorder}</td><td>${r.statusText}</td></tr>`).join('') || '<tr><td colspan="5">No rows.</td></tr>';
+    $('#stockStatusPagination').innerHTML = `<button class="page-btn" data-stock-nav="prev" ${reportState.stockPage <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${reportState.stockPage} of ${totalPages}</span><button class="page-btn" data-stock-nav="next" ${reportState.stockPage >= totalPages ? 'disabled' : ''}>Next</button>`;
 
     const buckets = { expired: 0, '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
     state().batches.forEach(b => {
@@ -554,6 +573,8 @@
     const start = $('#movementStart').value;
     const end = $('#movementEnd').value;
     const type = $('#movementType').value;
+    const pageSize = Number($('#movementPageSize')?.value || 10);
+
     const rows = state().transactions.filter(t => {
       const d = t.timestamp.slice(0, 10);
       if (start && d < start) return false;
@@ -561,7 +582,14 @@
       if (type !== 'all' && t.type !== type) return false;
       return true;
     });
-    $('#movementTable tbody').innerHTML = rows.map(t => `<tr><td>${fmtDate(t.timestamp)}</td><td>${t.type}</td><td>${map[t.medicineId]?.genericName || '-'}</td><td>${t.batchNo || '-'}</td><td>${t.qtyBaseUnits}</td><td>${t.user}</td></tr>`).join('') || '<tr><td colspan="6">No rows.</td></tr>';
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    if (reportState.movementPage > totalPages) reportState.movementPage = totalPages;
+    const sliceStart = (reportState.movementPage - 1) * pageSize;
+    const pageRows = rows.slice(sliceStart, sliceStart + pageSize);
+
+    $('#movementTable tbody').innerHTML = pageRows.map(t => `<tr><td>${fmtDate(t.timestamp)}</td><td>${t.type}</td><td>${map[t.medicineId]?.genericName || '-'}</td><td>${t.batchNo || '-'}</td><td>${t.qtyBaseUnits}</td><td>${t.user}</td></tr>`).join('') || '<tr><td colspan="6">No rows.</td></tr>';
+    $('#movementPagination').innerHTML = `<button class="page-btn" data-move-nav="prev" ${reportState.movementPage <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${reportState.movementPage} of ${totalPages}</span><button class="page-btn" data-move-nav="next" ${reportState.movementPage >= totalPages ? 'disabled' : ''}>Next</button>`;
   }
 
   function renderAudit() {
@@ -935,7 +963,29 @@
     showToast('Adjustment saved.', 'success');
   });
 
-  $('#applyMovementFilter').addEventListener('click', (e) => { e.preventDefault(); applyMovementFilter(); });
+  $('#applyMovementFilter').addEventListener('click', (e) => { e.preventDefault(); reportState.movementPage = 1; applyMovementFilter(); });
+
+  ['#stockStatusSearch', '#stockStatusFilter', '#stockStatusPageSize'].forEach(sel => {
+    $(sel).addEventListener('input', () => { reportState.stockPage = 1; renderReports(); });
+    $(sel).addEventListener('change', () => { reportState.stockPage = 1; renderReports(); });
+  });
+
+  $('#stockStatusPagination').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-stock-nav]');
+    if (!btn) return;
+    if (btn.dataset.stockNav === 'prev') reportState.stockPage = Math.max(1, reportState.stockPage - 1);
+    if (btn.dataset.stockNav === 'next') reportState.stockPage += 1;
+    renderReports();
+  });
+
+  $('#movementPageSize').addEventListener('change', () => { reportState.movementPage = 1; applyMovementFilter(); });
+  $('#movementPagination').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-move-nav]');
+    if (!btn) return;
+    if (btn.dataset.moveNav === 'prev') reportState.movementPage = Math.max(1, reportState.movementPage - 1);
+    if (btn.dataset.moveNav === 'next') reportState.movementPage += 1;
+    applyMovementFilter();
+  });
   $('#exportStockStatus').addEventListener('click', () => {
     const rows = [['Code', 'Medicine', 'Total Base Units', 'Reorder Point', 'Status']];
     $('#stockStatusTable tbody').querySelectorAll('tr').forEach(tr => rows.push([...tr.children].map(td => td.textContent.trim())));

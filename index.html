@@ -34,7 +34,7 @@
     </div>
   </div>
 
-  <div id="appView" class="app hidden">
+  <div id="appView" class="app layout hidden">
     <aside class="sidebar">
       <h2>PIMS</h2>
       <nav id="sidebarNav">
@@ -50,7 +50,7 @@
       </nav>
     </aside>
 
-    <main class="content">
+    <main class="content main">
       <header class="topbar">
         <div>
           <h1 id="pageTitle">Dashboard</h1>
@@ -281,24 +281,32 @@
 
       <section id="page-reports" class="page">
         <h3>Reports</h3>
-        <div class="card">
+        <div class="card report-card">
           <div class="section-head"><h4>Stock Status Report</h4><button id="exportStockStatus" class="btn">Export CSV</button></div>
-          <div class="table-wrap"><table id="stockStatusTable"><thead><tr><th>Code</th><th>Medicine</th><th>Total Base Units</th><th>Reorder Point</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+          <div class="filters report-filters sticky-subbar">
+            <input id="stockStatusSearch" placeholder="Search code or medicine" />
+            <select id="stockStatusFilter"><option value="all">All Status</option><option value="ok">OK</option><option value="low">Low Stock</option></select>
+            <select id="stockStatusPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
+          </div>
+          <div class="table-wrap report-scroll report-scroll-lg"><table id="stockStatusTable"><thead><tr><th>Code</th><th>Medicine</th><th>Total Base Units</th><th>Reorder Point</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+          <div id="stockStatusPagination" class="pagination"></div>
         </div>
         <div class="grid split-2">
           <div class="card">
             <h4>Expiry Timeline</h4>
             <div id="expiryTimeline"></div>
           </div>
-          <div class="card">
+          <div class="card report-card">
             <div class="section-head"><h4>Stock Movement</h4><button id="exportMovement" class="btn">Export CSV</button></div>
-            <div class="filters compact">
+            <div class="filters compact sticky-subbar movement-filters">
               <input type="date" id="movementStart" />
               <input type="date" id="movementEnd" />
               <select id="movementType"><option value="all">All</option><option value="stock-in">Stock-In</option><option value="dispense">Dispense</option><option value="adjustment">Adjustment</option></select>
+              <select id="movementPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
               <button id="applyMovementFilter" class="btn">Apply</button>
             </div>
-            <div class="table-wrap"><table id="movementTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Batch</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-wrap report-scroll report-scroll-md"><table id="movementTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Batch</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
+            <div id="movementPagination" class="pagination"></div>
           </div>
         </div>
       </section>

@@ -83,11 +83,21 @@ textarea { resize: vertical; }
   min-height: 100vh;
 }
 
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
 .sidebar {
   background: #0f172a;
   color: #fff;
   padding: var(--space-4) var(--space-3);
   border-right: 1px solid #1e293b;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+  flex: 0 0 240px;
 }
 
 .sidebar h2 { margin-bottom: 1rem; }
@@ -111,6 +121,7 @@ textarea { resize: vertical; }
 .nav-link.active { box-shadow: inset 3px 0 0 #60a5fa; }
 
 .content { padding: var(--space-4); max-width: 1200px; width: 100%; margin: 0 auto; }
+.main { flex: 1; overflow: auto; height: 100vh; }
 
 .topbar {
   background: var(--surface);
@@ -182,6 +193,7 @@ th, td {
   border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
+  height: 44px;
 }
 
 th {
@@ -485,6 +497,40 @@ dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
   color: var(--muted);
 }
 
+
+.report-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.report-filters {
+  margin-bottom: 0;
+}
+
+.sticky-subbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.report-scroll {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.report-scroll-lg { max-height: 60vh; }
+.report-scroll-md { max-height: 46vh; }
+
+#stockStatusPagination,
+#movementPagination {
+  margin-top: 0;
+}
+
 .modal-head {
   padding: var(--space-3) var(--space-3) 0;
 }
@@ -552,6 +598,8 @@ dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
 
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
-  .sidebar { position: sticky; top: 0; z-index: 3; }
+  .layout { display: block; }
+  .sidebar { position: relative; height: auto; flex: unset; }
+  .main { height: auto; overflow: visible; }
   .content { padding: var(--space-3); }
 }
