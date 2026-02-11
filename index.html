@@ -13,50 +13,56 @@
   <div id="loginView" class="login-view">
     <div class="login-card" role="region" aria-labelledby="loginTitle">
       <h1 id="loginTitle">Pharmacy Inventory Management System</h1>
-      <p class="sub">Demo (No Backend)</p>
+      <p class="sub">Sign in to continue</p>
       <form id="loginForm" novalidate>
         <div class="field">
           <label for="username">Username</label>
-          <input id="username" name="username" required />
+          <div class="input-with-icons login-input-wrap">
+            <input id="username" name="username" required />
+          </div>
         </div>
         <div class="field">
-          <label for="password">Password</label>
-          <input id="password" type="password" name="password" required />
+          <label for="loginPassword">Password</label>
+          <div class="input-with-icons password-with-icons login-input-wrap">
+            <input id="loginPassword" type="password" name="password" required autocomplete="current-password" />
+            <button type="button" id="loginPasswordToggleBtn" class="input-icon-btn password-toggle-btn" aria-label="Show password (Warning: will display password on screen)" aria-pressed="false" title="Show or hide password">👁</button>
+          </div>
         </div>
         <p id="loginError" class="error" aria-live="polite"></p>
         <button type="submit" class="btn primary w-full">Login</button>
       </form>
-      <div class="demo-accounts">
-        <strong>Demo Accounts</strong>
-        <p>admin / admin123</p>
-        <p>staff / staff123</p>
-      </div>
     </div>
   </div>
 
-  <div id="appView" class="app hidden">
+  <div id="appView" class="app layout hidden">
     <aside class="sidebar">
       <h2>PIMS</h2>
       <nav id="sidebarNav">
-        <button data-page="dashboard" class="nav-link active">Dashboard</button>
-        <button data-page="medicines" class="nav-link">Medicines</button>
-        <button data-page="batches" class="nav-link">Batches / FEFO</button>
-        <button data-page="transactions" class="nav-link">Transactions</button>
-        <button data-page="alerts" class="nav-link">Alerts</button>
-        <button data-page="reports" class="nav-link">Reports</button>
-        <button data-page="audit" class="nav-link">Audit Trail</button>
-        <button data-page="users" class="nav-link admin-only">Users</button>
-        <button data-page="settings" class="nav-link admin-only">Settings</button>
+        <div class="sidebar-nav-main">
+          <button data-page="dashboard" class="nav-link active">Dashboard</button>
+          <button data-page="medicines" class="nav-link">Medicines</button>
+          <button data-page="batches" class="nav-link">Batches / FEFO</button>
+          <button data-page="transactions" class="nav-link">Transactions</button>
+          <button data-page="alerts" class="nav-link">Alerts</button>
+          <button data-page="reports" class="nav-link">Reports</button>
+          <button data-page="audit" class="nav-link">Audit Trail</button>
+          <button data-page="users" class="nav-link admin-only">Users</button>
+        </div>
+
+        <div class="sidebar-utility">
+          <button data-page="settings" class="nav-link">Settings</button>
+          <button id="logoutBtn" type="button" class="btn danger w-full">Logout</button>
+        </div>
       </nav>
     </aside>
 
-    <main class="content">
+    <main class="content main">
       <header class="topbar">
         <div>
           <h1 id="pageTitle">Dashboard</h1>
           <p id="welcomeText"></p>
         </div>
-        <button id="logoutBtn" class="btn danger">Logout</button>
+        
       </header>
 
       <section id="page-dashboard" class="page active">
@@ -70,6 +76,7 @@
           <h3>Recent Transactions</h3>
           <div class="table-wrap"><table id="recentTxTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
         </div>
+
       </section>
 
       <section id="page-medicines" class="page">
@@ -78,7 +85,7 @@
           <button id="addMedicineBtn" class="btn primary">Add Medicine</button>
         </div>
         <div class="filters">
-          <input id="medicineSearch" placeholder="Search code, generic, brand, packaging" />
+          <div class="search-field"><input id="medicineSearch" placeholder="Search code, generic, brand, packaging" /><button type="button" id="medicineSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
           <select id="medicineCategoryFilter"></select>
           <select id="medicineRxFilter"><option value="all">All Type</option><option value="rx">Rx</option><option value="otc">OTC</option></select>
           <select id="medicineArchiveFilter"><option value="active">Active</option><option value="all">All</option><option value="archived">Archived</option></select>
@@ -105,7 +112,7 @@
 
         <div class="card batch-panel">
           <div class="filters batch-filter-bar">
-            <input id="batchSearch" placeholder="Search medicine or batch" />
+            <div class="search-field"><input id="batchSearch" placeholder="Search medicine or batch" /><button type="button" id="batchSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
             <select id="batchStatusFilter">
               <option value="all">All Status</option>
               <option value="ok">OK</option>
@@ -141,23 +148,32 @@
 
       <section id="page-transactions" class="page">
         <h3>Transactions</h3>
-        <div class="transactions-grid">
-          <form id="stockInForm" class="card tx-card" novalidate>
+        <div id="transactionsTabs" class="segmented tx-tabs" role="tablist" aria-label="Transaction tabs">
+          <button type="button" class="segment active" data-tx-tab="stock-in" aria-selected="true">Stock-In</button>
+          <button type="button" class="segment" data-tx-tab="dispense" aria-selected="false">Dispense</button>
+          <button type="button" class="segment" data-tx-tab="adjustments" aria-selected="false">Adjustments</button>
+        </div>
+
+        <div class="tx-panels">
+          <form id="stockInForm" class="card tx-form active" data-tx-panel="stock-in" novalidate>
             <div class="tx-card-header">
               <h4>Stock-In</h4>
               <p class="hint">Receive incoming stock and convert boxes into base units automatically.</p>
             </div>
             <div class="tx-card-body">
+              <h5 class="tx-section-title">Medicine Info</h5>
               <label>Medicine</label>
               <div class="combo" id="stockInMedicineCombo"></div>
               <input type="hidden" id="stockInMedicineId" name="medicineId" required />
 
+              <h5 class="tx-section-title">Batch Details</h5>
               <label for="stockInBatchNo">Batch No</label>
               <input id="stockInBatchNo" name="batchNo" required />
 
               <label for="stockInExpiry">Expiry Date</label>
               <input id="stockInExpiry" name="expiryDate" type="date" required />
 
+              <h5 class="tx-section-title">Quantity</h5>
               <label for="stockInQty">Quantity</label>
               <input id="stockInQty" name="qty" type="number" min="1" required />
 
@@ -171,24 +187,33 @@
             </div>
           </form>
 
-          <form id="dispenseForm" class="card tx-card" novalidate>
+          <form id="dispenseForm" class="card tx-form" data-tx-panel="dispense" novalidate>
             <div class="tx-card-header">
               <h4>Dispense / Stock-Out</h4>
               <p class="hint">Uses FEFO and blocks expired stock from being dispensed.</p>
             </div>
             <div class="tx-card-body">
+              <h5 class="tx-section-title">Medicine Info</h5>
               <label>Medicine</label>
               <div class="combo" id="dispenseMedicineCombo"></div>
               <input type="hidden" id="dispenseMedicineId" name="medicineId" required />
 
               <p id="dispenseSuggestion" class="hint hint-compact">Suggested FEFO batch: -</p>
+              <p id="dispenseMedicineDetails" class="hint hint-compact">Select a medicine to view details.</p>
+              <p id="dispenseStockDisplay" class="hint hint-compact">Current stock: -</p>
               <p class="hint hint-compact">For Rx medicines, tick Prescription Verified before submitting.</p>
 
+              <h5 class="tx-section-title">Quantity</h5>
               <label for="dispenseQty">Quantity</label>
               <input id="dispenseQty" name="qty" type="number" min="1" required />
+              <label for="dispenseQtyPreset">Quick Quantity</label>
+              <select id="dispenseQtyPreset"><option value="">Select quick quantity</option></select>
 
               <label for="dispenseUnit">Unit</label>
-              <select id="dispenseUnit" name="unit"><option value="base">Base Units</option><option value="box">Boxes</option></select>
+              <select id="dispenseUnit" name="unit"><option value="base">Base Units</option><option value="boxes">Boxes</option></select>
+
+              <p id="dispenseUnitHelper" class="hint hint-compact">Select medicine and quantity to preview base-unit deduction.</p>
+              <p id="dispenseUnitWarning" class="error hint-compact" aria-live="polite"></p>
 
               <label class="inline-check"><input type="checkbox" name="rxVerified" /> Prescription Verified</label>
 
@@ -199,22 +224,25 @@
             </div>
           </form>
 
-          <form id="adjustForm" class="card tx-card" novalidate>
+          <form id="adjustForm" class="card tx-form" data-tx-panel="adjustments" novalidate>
             <div class="tx-card-header">
               <h4>Adjustments</h4>
               <p class="hint">Add or subtract stock for corrections, damage, and disposals.</p>
             </div>
             <div class="tx-card-body">
+              <h5 class="tx-section-title">Medicine Info</h5>
               <label>Medicine</label>
               <div class="combo" id="adjustMedicineCombo"></div>
               <input type="hidden" id="adjustMedicineId" name="medicineId" required />
 
+              <h5 class="tx-section-title">Batch Details</h5>
               <label for="adjustReason">Reason</label>
               <select id="adjustReason" name="reason"><option value="expired disposal">expired disposal</option><option value="damaged">damaged</option><option value="missing">missing</option><option value="correction">correction</option></select>
 
               <label for="adjustDirection">Direction</label>
               <select id="adjustDirection" name="direction"><option value="subtract">Subtract</option><option value="add">Add</option></select>
 
+              <h5 class="tx-section-title">Quantity</h5>
               <label for="adjustQty">Quantity (base units)</label>
               <input id="adjustQty" name="qty" type="number" min="1" required />
 
@@ -224,6 +252,34 @@
               <button class="btn primary w-full">Apply Adjustment</button>
             </div>
           </form>
+        </div>
+
+        <div class="card report-card">
+          <div class="section-head"><h4>Transactions History</h4></div>
+          <div class="filters report-filters">
+            <div class="search-field"><input id="transactionsSearch" placeholder="Search medicine, batch, type, or date" /><button type="button" id="transactionsSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
+          </div>
+          <div class="table-wrap report-scroll report-scroll-md">
+            <table id="transactionsHistoryTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Batch</th><th>Qty (base)</th><th>User</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      
+
+        <div class="card report-card stockin-log-card">
+          <div class="section-head"><h4>Stock-In History / Receiving Log</h4><button id="exportStockInLog" class="btn">Export CSV</button></div>
+          <div class="filters report-filters sticky-subbar">
+            <div class="search-field"><input id="stockInLogSearch" placeholder="Search medicine code/name or batch" /><button type="button" id="stockInLogSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
+            <input id="stockInLogFrom" type="date" />
+            <input id="stockInLogTo" type="date" />
+            <select id="stockInLogPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
+          </div>
+          <div class="table-wrap report-scroll report-scroll-md stockin-log-scroll">
+            <table id="stockInLogTable">
+              <thead><tr><th>Date/Time</th><th>Medicine</th><th>Batch No</th><th>Expiry Date</th><th>Qty (input) + Unit</th><th>Qty Added (base units)</th><th>User</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="stockInLogPagination" class="pagination"></div>
         </div>
       </section>
 
@@ -237,7 +293,7 @@
 
         <div class="card alerts-panel">
           <div class="filters alerts-filters">
-            <input id="alertsSearch" placeholder="Search medicine name or code" />
+            <div class="search-field"><input id="alertsSearch" placeholder="Search medicine name or code" /><button type="button" id="alertsSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
             <select id="alertsFormFilter">
               <option value="all">All dosage forms</option>
               <option value="Tablet">Tablet</option>
@@ -281,24 +337,53 @@
 
       <section id="page-reports" class="page">
         <h3>Reports</h3>
-        <div class="card">
+        <div class="card report-card">
           <div class="section-head"><h4>Stock Status Report</h4><button id="exportStockStatus" class="btn">Export CSV</button></div>
-          <div class="table-wrap"><table id="stockStatusTable"><thead><tr><th>Code</th><th>Medicine</th><th>Total Base Units</th><th>Reorder Point</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+          <div class="filters report-filters sticky-subbar">
+            <div class="search-field"><input id="stockStatusSearch" placeholder="Search code or medicine" /><button type="button" id="stockStatusSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
+            <select id="stockStatusFilter"><option value="all">All Status</option><option value="ok">OK</option><option value="low">Low Stock</option></select>
+            <select id="stockStatusPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
+          </div>
+          <div class="table-wrap report-scroll report-scroll-lg"><table id="stockStatusTable"><thead><tr><th>Code</th><th>Medicine</th><th>Total Base Units</th><th>Reorder Point</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+          <div id="stockStatusPagination" class="pagination"></div>
         </div>
         <div class="grid split-2">
-          <div class="card">
-            <h4>Expiry Timeline</h4>
-            <div id="expiryTimeline"></div>
+          <div class="card expiry-timeline-card">
+            <div class="expiry-timeline-head">
+              <h4>Expiry Timeline</h4>
+              <p>Batches by days-to-expiry</p>
+            </div>
+            <div id="expiryTimeline" class="expiry-timeline" aria-live="polite"></div>
           </div>
-          <div class="card">
+          <div class="card report-card">
             <div class="section-head"><h4>Stock Movement</h4><button id="exportMovement" class="btn">Export CSV</button></div>
-            <div class="filters compact">
+            <div class="filters compact sticky-subbar movement-filters">
               <input type="date" id="movementStart" />
               <input type="date" id="movementEnd" />
               <select id="movementType"><option value="all">All</option><option value="stock-in">Stock-In</option><option value="dispense">Dispense</option><option value="adjustment">Adjustment</option></select>
+              <select id="movementPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
               <button id="applyMovementFilter" class="btn">Apply</button>
             </div>
-            <div class="table-wrap"><table id="movementTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Batch</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-wrap report-scroll report-scroll-md"><table id="movementTable"><thead><tr><th>Date</th><th>Type</th><th>Medicine</th><th>Batch</th><th>Qty</th><th>User</th></tr></thead><tbody></tbody></table></div>
+            <div id="movementPagination" class="pagination"></div>
+          </div>
+        </div>
+
+        <div class="card report-card">
+          <div class="section-head"><h4>Reorder List</h4></div>
+          <div class="filters report-filters reorder-controls">
+            <label class="inline-check"><input type="checkbox" id="reorderLowStockOnly" checked /> Low stock only</label>
+            <label class="inline-check"><input type="checkbox" id="reorderIncludeNearExpiry" checked /> Include near-expiry risk</label>
+            <button id="exportReorderList" class="btn" type="button">Export CSV</button>
+            <button id="printReorderList" class="btn" type="button">Print</button>
+          </div>
+          <div class="table-wrap report-scroll report-scroll-md">
+            <table id="reorderTable">
+              <thead>
+                <tr><th>Medicine Name</th><th>Available Stock (base units)</th><th>Reorder Level</th><th>Suggested Reorder Qty</th><th>Reason</th><th>Shelf Location</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -309,23 +394,96 @@
       </section>
 
       <section id="page-users" class="page admin-only-content">
-        <h3>User Management (Demo)</h3>
-        <div class="table-wrap"><table id="userTable"><thead><tr><th>Username</th><th>Role</th></tr></thead><tbody></tbody></table></div>
+        <div class="section-head">
+          <h3>User Management (Demo)</h3>
+          <button id="addUserBtn" class="btn primary">Add User</button>
+        </div>
+
+        <div class="grid cards users-summary">
+          <article class="card"><h4>Total Users</h4><p id="userMetricTotal">0</p></article>
+          <article class="card"><h4>Admin Users</h4><p id="userMetricAdmin">0</p></article>
+          <article class="card"><h4>Staff Users</h4><p id="userMetricStaff">0</p></article>
+          <article class="card"><h4>Active vs Disabled</h4><p id="userMetricStatus">0 / 0</p></article>
+        </div>
+
+        <div class="table-wrap"><table id="userTable"><thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+
+        <div class="card role-explainer">
+          <h4>Role Access Guide</h4>
+          <ul class="list">
+            <li><strong>Admin</strong>: full access to users, settings, inventory modules, transactions, and reports.</li>
+            <li><strong>Staff</strong>: operational access only (transactions and inventory viewing).</li>
+          </ul>
+          <p class="hint"><strong>Accountability:</strong> All user actions are recorded in the Audit Trail module.</p>
+        </div>
       </section>
 
-      <section id="page-settings" class="page admin-only-content">
-        <h3>System Settings</h3>
-        <form id="settingsForm" class="card" novalidate>
-          <label>Near expiry warning days
-            <input type="number" name="warningDays" min="1" required />
-          </label>
-          <label><input type="checkbox" name="requireRxVerification" /> Require prescription verification for Rx items</label>
-          <label>Categories (comma separated)
-            <textarea name="categories" rows="3"></textarea>
-          </label>
-          <p class="error" data-error></p>
-          <button class="btn primary">Save Settings</button>
-        </form>
+      <section id="page-settings" class="page">
+        <h3>Settings</h3>
+
+        <div class="grid split-2">
+          <article class="card">
+            <h4>Profile</h4>
+            <p class="hint">Used for account and notifications.</p>
+            <form id="profileForm" novalidate>
+              <label>Display Name
+                <input name="displayName" required />
+              </label>
+              <label>Email
+                <input name="email" type="email" required />
+              </label>
+
+              <details class="profile-advanced">
+                <summary>Preferences (Advanced)</summary>
+                <label>Phone
+                  <input name="phone" />
+                </label>
+                <label>Default Transaction View
+                  <select name="defaultTxn">
+                    <option value="stock-in">stock-in</option>
+                    <option value="dispense">dispense</option>
+                    <option value="adjustments">adjustments</option>
+                  </select>
+                </label>
+                <label>Default Unit
+                  <select name="defaultUnit">
+                    <option value="Base Units">Base Units</option>
+                    <option value="Box">Box</option>
+                  </select>
+                </label>
+                <label>Near-Expiry Threshold Days
+                  <input name="nearExpiryDays" type="number" min="1" max="365" required />
+                </label>
+              </details>
+
+              <p class="error" data-profile-error></p>
+              <div class="profile-actions">
+                <button class="btn primary" id="saveProfileBtn" disabled>Save</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="card">
+            <h4>Security (Change Password)</h4>
+            <p class="hint">Password update flow placeholder for this static demo.</p>
+            <button class="btn" type="button" disabled>Change Password (Coming Soon)</button>
+          </article>
+        </div>
+
+        <div class="card admin-only-content">
+          <h4>System (Admin Only)</h4>
+          <form id="settingsForm" novalidate>
+            <label>Near expiry warning days
+              <input type="number" name="warningDays" min="1" required />
+            </label>
+            <label><input type="checkbox" name="requireRxVerification" /> Require prescription verification for Rx items</label>
+            <label>Categories (comma separated)
+              <textarea name="categories" rows="3"></textarea>
+            </label>
+            <p class="error" data-error></p>
+            <button class="btn primary">Save Settings</button>
+          </form>
+        </div>
       </section>
     </main>
   </div>
@@ -404,6 +562,24 @@
     <div class="modal-actions">
       <button class="btn" id="closeAlertsBatchModal">Close</button>
     </div>
+  </dialog>
+
+
+  <dialog id="userModal" aria-labelledby="userModalTitle">
+    <form method="dialog" id="userForm" novalidate>
+      <h3 id="userModalTitle">Add User</h3>
+      <input type="hidden" name="id" />
+      <label>Username<input name="username" required /></label>
+      <label>Role
+        <select name="role"><option value="admin">Admin</option><option value="staff">Staff</option></select>
+      </label>
+      <label>Temporary Password (for new user)<input name="password" /></label>
+      <p class="error" data-error></p>
+      <div class="modal-actions">
+        <button value="cancel" class="btn">Cancel</button>
+        <button value="default" class="btn primary">Save User</button>
+      </div>
+    </form>
   </dialog>
 
   <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
