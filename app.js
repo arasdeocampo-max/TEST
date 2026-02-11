@@ -196,6 +196,44 @@
     });
   }
 
+  function debounce(fn, delay = 180) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  function setupSearchWithClear({ inputEl, clearBtnEl, onChange }) {
+    if (!inputEl || !clearBtnEl || !onChange) return;
+    const emit = debounce(() => onChange(inputEl.value.trim()), 180);
+
+    const syncClear = () => clearBtnEl.classList.toggle('show', !!inputEl.value.trim());
+
+    inputEl.addEventListener('input', () => {
+      syncClear();
+      emit();
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && inputEl.value) {
+        e.preventDefault();
+        inputEl.value = '';
+        syncClear();
+        onChange('');
+      }
+    });
+
+    clearBtnEl.addEventListener('click', () => {
+      inputEl.value = '';
+      syncClear();
+      onChange('');
+      inputEl.focus();
+    });
+
+    syncClear();
+  }
+
   function refreshAll() {
     renderNavOptions();
     renderDashboard();
@@ -266,7 +304,7 @@
       <td>${m.strengthValue || ''} ${m.strengthUnit || ''}</td><td>${m.baseUnit}</td><td>${totalForMedicine(m.id)}</td>
       <td>${m.rxRequired ? 'Rx' : 'OTC'}</td><td>${m.archived ? 'Archived' : 'Active'}</td>
       <td><button class="btn" data-act="edit">Edit</button> <button class="btn" data-act="archive">${m.archived ? 'Unarchive' : 'Archive'}</button></td>
-    </tr>`).join('') || '<tr><td colspan="10">No records.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="10">No matching results</td></tr>';
   }
 
   const batchViewState = { page: 1 };
@@ -375,7 +413,7 @@
             </table>
           </div>
         </details>`;
-      }).join('') || '<div class="card"><p class="hint">No batches found.</p></div>';
+      }).join('') || '<div class="card"><p class="hint">No matching results</p></div>';
 
       renderBatchPagination(totalPages);
     } else {
@@ -384,7 +422,7 @@
       const start = (batchViewState.page - 1) * pageSize;
       const pageRows = rows.slice(start, start + pageSize);
 
-      results.innerHTML = `<div class="table-wrap"><table id="batchFlatTable"><thead><tr><th>Medicine</th><th>Form</th><th>Batch</th><th>Expiry</th><th>Days Left</th><th>Qty (base)</th><th>Status</th></tr></thead><tbody>${pageRows.map(r => `<tr><td>${r.medicineName}</td><td>${r.form}</td><td>${r.batchNo}</td><td>${r.expiryDate}</td><td>${r.status.daysLeft}</td><td>${r.qtyBaseUnits}</td><td>${r.status.badge}</td></tr>`).join('') || '<tr><td colspan="7">No batches found.</td></tr>'}</tbody></table></div>`;
+      results.innerHTML = `<div class="table-wrap"><table id="batchFlatTable"><thead><tr><th>Medicine</th><th>Form</th><th>Batch</th><th>Expiry</th><th>Days Left</th><th>Qty (base)</th><th>Status</th></tr></thead><tbody>${pageRows.map(r => `<tr><td>${r.medicineName}</td><td>${r.form}</td><td>${r.batchNo}</td><td>${r.expiryDate}</td><td>${r.status.daysLeft}</td><td>${r.qtyBaseUnits}</td><td>${r.status.badge}</td></tr>`).join('') || '<tr><td colspan="7">No matching results</td></tr>'}</tbody></table></div>`;
       renderBatchPagination(totalPages);
     }
 
@@ -555,7 +593,7 @@
     const start = (reportState.stockPage - 1) * pageSize;
     const pageRows = rows.slice(start, start + pageSize);
 
-    $('#stockStatusTable tbody').innerHTML = pageRows.map(r => `<tr><td>${r.code}</td><td>${r.name}</td><td>${r.total}</td><td>${r.reorder}</td><td>${r.statusText}</td></tr>`).join('') || '<tr><td colspan="5">No rows.</td></tr>';
+    $('#stockStatusTable tbody').innerHTML = pageRows.map(r => `<tr><td>${r.code}</td><td>${r.name}</td><td>${r.total}</td><td>${r.reorder}</td><td>${r.statusText}</td></tr>`).join('') || '<tr><td colspan="5">No matching results</td></tr>';
     $('#stockStatusPagination').innerHTML = `<button class="page-btn" data-stock-nav="prev" ${reportState.stockPage <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${reportState.stockPage} of ${totalPages}</span><button class="page-btn" data-stock-nav="next" ${reportState.stockPage >= totalPages ? 'disabled' : ''}>Next</button>`;
 
     const buckets = { expired: 0, '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
@@ -588,7 +626,7 @@
     const sliceStart = (reportState.movementPage - 1) * pageSize;
     const pageRows = rows.slice(sliceStart, sliceStart + pageSize);
 
-    $('#movementTable tbody').innerHTML = pageRows.map(t => `<tr><td>${fmtDate(t.timestamp)}</td><td>${t.type}</td><td>${map[t.medicineId]?.genericName || '-'}</td><td>${t.batchNo || '-'}</td><td>${t.qtyBaseUnits}</td><td>${t.user}</td></tr>`).join('') || '<tr><td colspan="6">No rows.</td></tr>';
+    $('#movementTable tbody').innerHTML = pageRows.map(t => `<tr><td>${fmtDate(t.timestamp)}</td><td>${t.type}</td><td>${map[t.medicineId]?.genericName || '-'}</td><td>${t.batchNo || '-'}</td><td>${t.qtyBaseUnits}</td><td>${t.user}</td></tr>`).join('') || '<tr><td colspan="6">No matching results</td></tr>';
     $('#movementPagination').innerHTML = `<button class="page-btn" data-move-nav="prev" ${reportState.movementPage <= 1 ? 'disabled' : ''}>Prev</button><span class="hint">Page ${reportState.movementPage} of ${totalPages}</span><button class="page-btn" data-move-nav="next" ${reportState.movementPage >= totalPages ? 'disabled' : ''}>Next</button>`;
   }
 
@@ -721,12 +759,66 @@
       $('#adjustMedicineId').value = med.id;
     })
   };
-  ['#medicineSearch', '#medicineCategoryFilter', '#medicineRxFilter', '#medicineArchiveFilter'].forEach(s => {
-    $(s).addEventListener('input', renderMedicines);
-    $(s).addEventListener('change', renderMedicines);
+
+  setupSearchWithClear({
+    inputEl: $('#medicineSearch'),
+    clearBtnEl: $('#medicineSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#medicineCategoryFilter').value = 'all';
+        $('#medicineRxFilter').value = 'all';
+        $('#medicineArchiveFilter').value = 'active';
+      }
+      renderMedicines();
+    }
+  });
+
+  setupSearchWithClear({
+    inputEl: $('#batchSearch'),
+    clearBtnEl: $('#batchSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#batchStatusFilter').value = 'all';
+        $('#batchSort').value = 'fefo';
+        $('#batchGroupToggle').checked = true;
+        $('#batchPageSize').value = '10';
+        $('#batchMedicineFilter').value = '';
+      }
+      batchViewState.page = 1;
+      renderBatches();
+    }
+  });
+
+  setupSearchWithClear({
+    inputEl: $('#alertsSearch'),
+    clearBtnEl: $('#alertsSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#alertsFormFilter').value = 'all';
+        $('#alertsCriticalOnly').checked = false;
+      }
+      renderAlerts();
+    }
+  });
+
+  setupSearchWithClear({
+    inputEl: $('#stockStatusSearch'),
+    clearBtnEl: $('#stockStatusSearchClear'),
+    onChange: (value) => {
+      if (!value) {
+        $('#stockStatusFilter').value = 'all';
+        $('#stockStatusPageSize').value = '10';
+      }
+      reportState.stockPage = 1;
+      renderReports();
+    }
+  });
+  ['#medicineCategoryFilter', '#medicineRxFilter', '#medicineArchiveFilter'].forEach(sel => {
+    $(sel).addEventListener('input', renderMedicines);
+    $(sel).addEventListener('change', renderMedicines);
   });
   $('#batchMedicineFilter').addEventListener('change', () => { batchViewState.page = 1; renderBatches(); });
-  ['#batchSearch', '#batchStatusFilter', '#batchSort', '#batchGroupToggle', '#batchPageSize'].forEach(sel => {
+  ['#batchStatusFilter', '#batchSort', '#batchGroupToggle', '#batchPageSize'].forEach(sel => {
     $(sel).addEventListener('input', () => { batchViewState.page = 1; renderBatches(); });
     $(sel).addEventListener('change', () => { batchViewState.page = 1; renderBatches(); });
   });
@@ -753,7 +845,7 @@
     renderAlerts();
   });
 
-  ['#alertsSearch', '#alertsFormFilter', '#alertsCriticalOnly'].forEach(sel => {
+  ['#alertsFormFilter', '#alertsCriticalOnly'].forEach(sel => {
     $(sel).addEventListener('input', renderAlerts);
     $(sel).addEventListener('change', renderAlerts);
   });
@@ -965,7 +1057,7 @@
 
   $('#applyMovementFilter').addEventListener('click', (e) => { e.preventDefault(); reportState.movementPage = 1; applyMovementFilter(); });
 
-  ['#stockStatusSearch', '#stockStatusFilter', '#stockStatusPageSize'].forEach(sel => {
+  ['#stockStatusFilter', '#stockStatusPageSize'].forEach(sel => {
     $(sel).addEventListener('input', () => { reportState.stockPage = 1; renderReports(); });
     $(sel).addEventListener('change', () => { reportState.stockPage = 1; renderReports(); });
   });

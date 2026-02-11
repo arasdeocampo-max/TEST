@@ -78,7 +78,7 @@
           <button id="addMedicineBtn" class="btn primary">Add Medicine</button>
         </div>
         <div class="filters">
-          <input id="medicineSearch" placeholder="Search code, generic, brand, packaging" />
+          <div class="search-field"><input id="medicineSearch" placeholder="Search code, generic, brand, packaging" /><button type="button" id="medicineSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
           <select id="medicineCategoryFilter"></select>
           <select id="medicineRxFilter"><option value="all">All Type</option><option value="rx">Rx</option><option value="otc">OTC</option></select>
           <select id="medicineArchiveFilter"><option value="active">Active</option><option value="all">All</option><option value="archived">Archived</option></select>
@@ -105,7 +105,7 @@
 
         <div class="card batch-panel">
           <div class="filters batch-filter-bar">
-            <input id="batchSearch" placeholder="Search medicine or batch" />
+            <div class="search-field"><input id="batchSearch" placeholder="Search medicine or batch" /><button type="button" id="batchSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
             <select id="batchStatusFilter">
               <option value="all">All Status</option>
               <option value="ok">OK</option>
@@ -237,7 +237,7 @@
 
         <div class="card alerts-panel">
           <div class="filters alerts-filters">
-            <input id="alertsSearch" placeholder="Search medicine name or code" />
+            <div class="search-field"><input id="alertsSearch" placeholder="Search medicine name or code" /><button type="button" id="alertsSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
             <select id="alertsFormFilter">
               <option value="all">All dosage forms</option>
               <option value="Tablet">Tablet</option>
@@ -284,7 +284,7 @@
         <div class="card report-card">
           <div class="section-head"><h4>Stock Status Report</h4><button id="exportStockStatus" class="btn">Export CSV</button></div>
           <div class="filters report-filters sticky-subbar">
-            <input id="stockStatusSearch" placeholder="Search code or medicine" />
+            <div class="search-field"><input id="stockStatusSearch" placeholder="Search code or medicine" /><button type="button" id="stockStatusSearchClear" class="search-clear" aria-label="Clear search">×</button></div>
             <select id="stockStatusFilter"><option value="all">All Status</option><option value="ok">OK</option><option value="low">Low Stock</option></select>
             <select id="stockStatusPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
           </div>
