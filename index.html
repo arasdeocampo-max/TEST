@@ -95,10 +95,48 @@
 
       <section id="page-batches" class="page">
         <h3>Batch & Expiry Tracking (FEFO)</h3>
-        <div class="filters">
-          <select id="batchMedicineFilter"></select>
+
+        <div class="grid cards batch-summary">
+          <article class="card"><h4>Total Batches</h4><p id="batchMetricTotal">0</p></article>
+          <article class="card"><h4>Expired</h4><p id="batchMetricExpired">0</p></article>
+          <article class="card"><h4>Near Expiry</h4><p id="batchMetricNear">0</p></article>
+          <article class="card"><h4>OK</h4><p id="batchMetricOk">0</p></article>
         </div>
-        <div class="table-wrap"><table id="batchTable"><thead><tr><th>Medicine</th><th>Batch</th><th>Expiry</th><th>Qty (base)</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+
+        <div class="card batch-panel">
+          <div class="filters batch-filter-bar">
+            <input id="batchSearch" placeholder="Search medicine or batch" />
+            <select id="batchStatusFilter">
+              <option value="all">All Status</option>
+              <option value="ok">OK</option>
+              <option value="near">Near Expiry</option>
+              <option value="expired">Expired</option>
+            </select>
+            <select id="batchSort">
+              <option value="fefo">FEFO (expiry asc)</option>
+              <option value="qty">Qty desc</option>
+              <option value="medicine">Medicine A-Z</option>
+            </select>
+            <label class="inline-check"><input type="checkbox" id="batchGroupToggle" checked /> Group by Medicine</label>
+            <label>Items
+              <select id="batchPageSize"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
+            </label>
+            <label>Medicine
+              <select id="batchMedicineFilter"></select>
+            </label>
+          </div>
+
+          <div id="batchFefoCard" class="card soft hidden">
+            <h4>Suggested FEFO Batch</h4>
+            <p id="batchFefoText" class="hint"></p>
+          </div>
+
+          <div class="batch-scroll">
+            <div id="batchResults"></div>
+          </div>
+
+          <div id="batchPagination" class="pagination"></div>
+        </div>
       </section>
 
       <section id="page-transactions" class="page">

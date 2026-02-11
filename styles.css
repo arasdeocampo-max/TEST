@@ -289,6 +289,107 @@ dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
 .toast.info { border-color: #bfdbfe; background: #eff6ff; }
 
 
+
+
+.batch-summary .card p {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.batch-panel {
+  padding: 20px 24px;
+}
+
+.batch-filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-3);
+}
+
+.batch-scroll {
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.batch-scroll .table-wrap {
+  border: 0;
+  border-radius: 0;
+}
+
+.batch-group {
+  border-bottom: 1px solid var(--border);
+}
+
+.batch-group:last-child {
+  border-bottom: 0;
+}
+
+.batch-group > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: #fff;
+}
+
+.batch-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.batch-group > summary:hover {
+  background: #f8fafc;
+}
+
+.batch-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.batch-inner {
+  padding: 0 12px 12px;
+}
+
+.batch-inner table th,
+.batch-inner table td,
+#batchFlatTable th,
+#batchFlatTable td {
+  height: 44px;
+}
+
+.pagination {
+  margin-top: var(--space-3);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.page-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.page-btn.active {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
 .alerts-summary .card p {
   margin: 0;
   font-size: 1.45rem;

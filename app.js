@@ -20,6 +20,13 @@
     return Math.floor((new Date(dateStr) - new Date(todayStr())) / 86400000);
   }
 
+  function getBatchStatus(expiryDate, warningDays) {
+    const d = daysUntil(expiryDate);
+    if (d < 0) return { key: 'expired', label: 'Expired', badge: '<span class="badge danger">Expired</span>', daysLeft: d };
+    if (d <= warningDays) return { key: 'near', label: 'Near Expiry', badge: '<span class="badge warn">Near Expiry</span>', daysLeft: d };
+    return { key: 'ok', label: 'OK', badge: '<span class="badge ok">OK</span>', daysLeft: d };
+  }
+
   function state() {
     return {
       users: get(KEYS.users), medicines: get(KEYS.medicines), batches: get(KEYS.batches),
@@ -136,15 +143,138 @@
     </tr>`).join('') || '<tr><td colspan="10">No records.</td></tr>';
   }
 
+  const batchViewState = { page: 1 };
+
   function renderBatches() {
-    const medFilter = $('#batchMedicineFilter').value;
+    const s = state();
     const meds = medicineMap();
-    const batches = state().batches.filter(b => !medFilter || b.medicineId === medFilter).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
-    $('#batchTable tbody').innerHTML = batches.map(b => {
-      const days = daysUntil(b.expiryDate);
-      const status = days < 0 ? '<span class="badge danger">Expired</span>' : days <= state().settings.warningDays ? '<span class="badge warn">Near expiry</span>' : '<span class="badge ok">OK</span>';
-      return `<tr><td>${meds[b.medicineId]?.genericName || '-'}</td><td>${b.batchNo}</td><td>${b.expiryDate}</td><td>${b.qtyBaseUnits}</td><td>${status}</td></tr>`;
-    }).join('') || '<tr><td colspan="5">No batches.</td></tr>';
+    const warningDays = s.settings.warningDays;
+    const medFilter = $('#batchMedicineFilter').value;
+    const search = ($('#batchSearch').value || '').toLowerCase();
+    const statusFilter = $('#batchStatusFilter').value || 'all';
+    const sortBy = $('#batchSort').value || 'fefo';
+    const grouped = $('#batchGroupToggle').checked;
+    const pageSize = Number($('#batchPageSize').value || 10);
+
+    let rows = s.batches
+      .filter(b => !medFilter || b.medicineId === medFilter)
+      .map(b => {
+        const med = meds[b.medicineId];
+        const status = getBatchStatus(b.expiryDate, warningDays);
+        return {
+          ...b,
+          medicineName: med ? `${med.code} - ${med.genericName}` : '-',
+          form: med?.dosageForm || '-',
+          baseUnit: med?.baseUnit || 'unit',
+          packSize: med?.packSize || 0,
+          status
+        };
+      })
+      .filter(r => (statusFilter === 'all' || r.status.key === statusFilter) && (!search || `${r.medicineName} ${r.batchNo}`.toLowerCase().includes(search)));
+
+    const summary = {
+      total: rows.length,
+      expired: rows.filter(r => r.status.key === 'expired').length,
+      near: rows.filter(r => r.status.key === 'near').length,
+      ok: rows.filter(r => r.status.key === 'ok').length
+    };
+    $('#batchMetricTotal').textContent = summary.total;
+    $('#batchMetricExpired').textContent = summary.expired;
+    $('#batchMetricNear').textContent = summary.near;
+    $('#batchMetricOk').textContent = summary.ok;
+
+    const fefoCard = $('#batchFefoCard');
+    const fefoText = $('#batchFefoText');
+    if (medFilter) {
+      const medRows = rows
+        .filter(r => r.medicineId === medFilter)
+        .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+      const best = medRows.find(r => r.status.key !== 'expired' && r.qtyBaseUnits > 0) || medRows[0];
+      if (best) {
+        fefoText.textContent = `${best.batchNo} — expires ${best.expiryDate} — qty ${best.qtyBaseUnits} ${best.baseUnit}`;
+        fefoCard.classList.remove('hidden');
+      } else {
+        fefoCard.classList.add('hidden');
+      }
+    } else {
+      fefoCard.classList.add('hidden');
+    }
+
+    const sorter = {
+      fefo: (a, b) => new Date(a.expiryDate) - new Date(b.expiryDate),
+      qty: (a, b) => b.qtyBaseUnits - a.qtyBaseUnits,
+      medicine: (a, b) => a.medicineName.localeCompare(b.medicineName)
+    }[sortBy] || ((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+    rows.sort(sorter);
+
+    const results = $('#batchResults');
+    const pagination = $('#batchPagination');
+
+    if (grouped) {
+      const groupsMap = new Map();
+      rows.forEach(r => {
+        if (!groupsMap.has(r.medicineId)) groupsMap.set(r.medicineId, { medicineId: r.medicineId, medicineName: r.medicineName, form: r.form, baseUnit: r.baseUnit, packSize: r.packSize, batches: [] });
+        groupsMap.get(r.medicineId).batches.push(r);
+      });
+      let groups = [...groupsMap.values()].map(g => {
+        g.batches.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+        g.totalQty = g.batches.reduce((n, x) => n + x.qtyBaseUnits, 0);
+        g.worst = g.batches.some(x => x.status.key === 'expired') ? 'expired' : g.batches.some(x => x.status.key === 'near') ? 'near' : 'ok';
+        return g;
+      });
+      if (sortBy === 'medicine') groups.sort((a, b) => a.medicineName.localeCompare(b.medicineName));
+      if (sortBy === 'qty') groups.sort((a, b) => b.totalQty - a.totalQty);
+      if (sortBy === 'fefo') groups.sort((a, b) => new Date(a.batches[0]?.expiryDate || '2999-12-31') - new Date(b.batches[0]?.expiryDate || '2999-12-31'));
+
+      const totalPages = Math.max(1, Math.ceil(groups.length / pageSize));
+      if (batchViewState.page > totalPages) batchViewState.page = totalPages;
+      const start = (batchViewState.page - 1) * pageSize;
+      const pageGroups = groups.slice(start, start + pageSize);
+
+      results.innerHTML = pageGroups.map((g, i) => {
+        const worstBadge = g.worst === 'expired' ? '<span class="badge danger">Expired</span>' : g.worst === 'near' ? '<span class="badge warn">Near</span>' : '<span class="badge ok">OK</span>';
+        return `<details class="batch-group" ${i === 0 ? 'open' : ''}>
+          <summary>
+            <div><strong>${g.medicineName}</strong><div class="batch-meta">${g.form}</div></div>
+            <div>${g.totalQty} ${g.baseUnit}</div>
+            <div>${g.batches.length} batches</div>
+            <div>${worstBadge}</div>
+          </summary>
+          <div class="batch-inner table-wrap">
+            <table>
+              <thead><tr><th>Batch No</th><th>Expiry</th><th>Days Left</th><th>Qty (base)</th><th>Status</th></tr></thead>
+              <tbody>
+                ${g.batches.map(b => `<tr><td>${b.batchNo}</td><td>${b.expiryDate}</td><td>${b.status.daysLeft}</td><td>${b.qtyBaseUnits}</td><td>${b.status.badge}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </details>`;
+      }).join('') || '<div class="card"><p class="hint">No batches found.</p></div>';
+
+      renderBatchPagination(totalPages);
+    } else {
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      if (batchViewState.page > totalPages) batchViewState.page = totalPages;
+      const start = (batchViewState.page - 1) * pageSize;
+      const pageRows = rows.slice(start, start + pageSize);
+
+      results.innerHTML = `<div class="table-wrap"><table id="batchFlatTable"><thead><tr><th>Medicine</th><th>Form</th><th>Batch</th><th>Expiry</th><th>Days Left</th><th>Qty (base)</th><th>Status</th></tr></thead><tbody>${pageRows.map(r => `<tr><td>${r.medicineName}</td><td>${r.form}</td><td>${r.batchNo}</td><td>${r.expiryDate}</td><td>${r.status.daysLeft}</td><td>${r.qtyBaseUnits}</td><td>${r.status.badge}</td></tr>`).join('') || '<tr><td colspan="7">No batches found.</td></tr>'}</tbody></table></div>`;
+      renderBatchPagination(totalPages);
+    }
+
+    function renderBatchPagination(totalPages) {
+      const page = batchViewState.page;
+      let html = `<button class="page-btn" data-page-nav="prev" ${page <= 1 ? 'disabled' : ''}>Prev</button>`;
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - page) <= 1) {
+          html += `<button class="page-btn ${i === page ? 'active' : ''}" data-page="${i}">${i}</button>`;
+        } else if (Math.abs(i - page) === 2) {
+          html += '<span class="hint">...</span>';
+        }
+      }
+      html += `<button class="page-btn" data-page-nav="next" ${page >= totalPages ? 'disabled' : ''}>Next</button>`;
+      pagination.innerHTML = html;
+    }
   }
 
   function computeAlerts() {
@@ -419,7 +549,20 @@
     $(s).addEventListener('input', renderMedicines);
     $(s).addEventListener('change', renderMedicines);
   });
-  $('#batchMedicineFilter').addEventListener('change', renderBatches);
+  $('#batchMedicineFilter').addEventListener('change', () => { batchViewState.page = 1; renderBatches(); });
+  ['#batchSearch', '#batchStatusFilter', '#batchSort', '#batchGroupToggle', '#batchPageSize'].forEach(sel => {
+    $(sel).addEventListener('input', () => { batchViewState.page = 1; renderBatches(); });
+    $(sel).addEventListener('change', () => { batchViewState.page = 1; renderBatches(); });
+  });
+  $('#batchPagination').addEventListener('click', (e) => {
+    const btn = e.target.closest('button.page-btn');
+    if (!btn) return;
+    const nav = btn.dataset.pageNav;
+    if (nav === 'prev') batchViewState.page = Math.max(1, batchViewState.page - 1);
+    else if (nav === 'next') batchViewState.page += 1;
+    else if (btn.dataset.page) batchViewState.page = Number(btn.dataset.page);
+    renderBatches();
+  });
 
 
   $('#alertsTabs').addEventListener('click', (e) => {
