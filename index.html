@@ -17,11 +17,18 @@
       <form id="loginForm" novalidate>
         <div class="field">
           <label for="username">Username</label>
-          <input id="username" name="username" required />
+          <div class="input-with-icons">
+            <input id="username" name="username" required />
+            <button type="button" id="usernameClearBtn" class="input-icon-btn clear-btn" aria-label="Clear username" title="Clear username">×</button>
+          </div>
         </div>
         <div class="field">
-          <label for="password">Password</label>
-          <input id="password" type="password" name="password" required />
+          <label for="loginPassword">Password</label>
+          <div class="input-with-icons password-with-icons">
+            <input id="loginPassword" type="password" name="password" required autocomplete="current-password" />
+            <button type="button" id="loginPasswordClearBtn" class="input-icon-btn clear-btn" aria-label="Clear password" title="Clear password">×</button>
+            <button type="button" id="loginPasswordToggleBtn" class="input-icon-btn password-toggle-btn" aria-label="Show password (Warning: will display password on screen)" aria-pressed="false" title="Show or hide password">👁</button>
+          </div>
         </div>
         <p id="loginError" class="error" aria-live="polite"></p>
         <button type="submit" class="btn primary w-full">Login</button>

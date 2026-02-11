@@ -772,3 +772,59 @@ dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
   top: 0;
   z-index: 1;
 }
+
+.input-with-icons {
+  position: relative;
+}
+
+.input-with-icons input {
+  padding-right: 72px;
+}
+
+.password-with-icons input {
+  padding-right: 104px;
+}
+
+.input-icon-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.input-icon-btn:hover {
+  background: #cbd5e1;
+}
+
+.input-icon-btn:focus-visible {
+  outline: 2px solid #bfdbfe;
+  outline-offset: 1px;
+}
+
+.input-icon-btn.clear-btn {
+  right: 10px;
+  display: none;
+}
+
+.password-with-icons .input-icon-btn.clear-btn {
+  right: 42px;
+}
+
+.input-icon-btn.clear-btn.show {
+  display: inline-flex;
+}
+
+.password-with-icons .password-toggle-btn {
+  right: 10px;
+}

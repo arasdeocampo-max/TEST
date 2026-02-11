@@ -268,6 +268,43 @@
     syncClear();
   }
 
+  function setupClearButton(inputEl, btnEl) {
+    if (!inputEl || !btnEl) return;
+
+    const sync = () => btnEl.classList.toggle('show', !!inputEl.value);
+
+    inputEl.addEventListener('input', sync);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && inputEl.value) {
+        e.preventDefault();
+        inputEl.value = '';
+        sync();
+      }
+    });
+
+    btnEl.addEventListener('click', () => {
+      inputEl.value = '';
+      sync();
+      inputEl.focus();
+    });
+
+    sync();
+  }
+
+  function togglePasswordVisibility() {
+    const passwordInput = $('#loginPassword');
+    const toggleBtn = $('#loginPasswordToggleBtn');
+    if (!passwordInput || !toggleBtn) return;
+
+    const isHidden = passwordInput.type === 'password';
+    passwordInput.type = isHidden ? 'text' : 'password';
+    toggleBtn.textContent = isHidden ? '🙈' : '👁';
+    toggleBtn.setAttribute('aria-pressed', String(isHidden));
+    toggleBtn.setAttribute('aria-label', isHidden
+      ? 'Hide password'
+      : 'Show password (Warning: will display password on screen)');
+  }
+
   function refreshAll() {
     renderNavOptions();
     renderDashboard();
@@ -875,10 +912,14 @@
     $('#pageTitle').textContent = page[0].toUpperCase() + page.slice(1);
   };
 
+  setupClearButton($('#username'), $('#usernameClearBtn'));
+  setupClearButton($('#loginPassword'), $('#loginPasswordClearBtn'));
+  $('#loginPasswordToggleBtn').addEventListener('click', togglePasswordVisibility);
+
   $('#loginForm').addEventListener('submit', e => {
     e.preventDefault();
     const u = $('#username').value.trim();
-    const p = $('#password').value;
+    const p = $('#loginPassword').value;
     const users = normalizedUsers();
     const user = users.find(x => x.username === u && x.password === p);
     if (!user) { $('#loginError').textContent = 'Invalid credentials.'; showToast('Login failed.', 'error'); return; }
