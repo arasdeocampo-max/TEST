@@ -903,13 +903,21 @@
   }
 
   let currentPage = 'dashboard';
+  const normalizePage = (page) => (page || 'dashboard').toString().replace(/^\/+/, '') || 'dashboard';
+
   const goToPage = (page) => {
-    if (state().session?.role !== 'admin' && ['users', 'settings'].includes(page)) return;
-    currentPage = page;
+    const normalizedPage = normalizePage(page);
+    if (state().session?.role !== 'admin' && ['users', 'settings'].includes(normalizedPage)) return;
+
+    currentPage = normalizedPage;
     $$('.page').forEach(p => p.classList.remove('active'));
-    $(`#page-${page}`).classList.add('active');
-    $$('.nav-link').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-    $('#pageTitle').textContent = page[0].toUpperCase() + page.slice(1);
+    $(`#page-${normalizedPage}`)?.classList.add('active');
+    $$('.nav-link').forEach(n => n.classList.toggle('active', normalizePage(n.dataset.page) === normalizedPage));
+    $('#pageTitle').textContent = normalizedPage[0].toUpperCase() + normalizedPage.slice(1);
+
+    if (history?.replaceState) {
+      history.replaceState(null, '', `/${normalizedPage}`);
+    }
   };
 
   setupClearButton($('#username'), $('#usernameClearBtn'));
@@ -941,6 +949,11 @@
   });
 
   $('#sidebarNav').addEventListener('click', e => { if (e.target.matches('.nav-link')) goToPage(e.target.dataset.page); });
+
+  const initialRoute = normalizePage((window.location.pathname || '').replace(/^\//, ''));
+  if (state().session && document.querySelector(`#page-${initialRoute}`)) {
+    goToPage(initialRoute);
+  }
 
   medicineCombos.stockIn = {
     hiddenSelector: '#stockInMedicineId',
@@ -1483,7 +1496,7 @@
 
   if (state().session) {
     refreshAll();
-    goToPage('dashboard');
+    goToPage(initialRoute && document.querySelector(`#page-${initialRoute}`) ? initialRoute : 'dashboard');
     updateDispenseSuggestion();
     updateDispenseUnitHelper();
   }
